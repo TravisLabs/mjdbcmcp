@@ -1,0 +1,26 @@
+services:
+  mjdbcmcp:
+    image: git.research.travislabs.com/travis/mjdbcmcp:latest
+    # Local build instead of the registry image:
+    #   podman compose build
+    build: .
+    container_name: mjdbcmcp
+    restart: unless-stopped
+    ports:
+      # Loopback-only publish: neither the admin UI nor the MCP endpoint is
+      # authenticated. Widen this only behind something that is.
+      - "127.0.0.1:8080:8080"
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      # Set these once the service is reachable from a browser under a real
+      # hostname, otherwise the MCP transport's DNS-rebinding check stays off.
+      # MJDBCMCP_MCP_ALLOWEDORIGINS: "https://db.example.com"
+      # MJDBCMCP_MCP_ALLOWEDHOSTS: "db.example.com"
+      JAVA_OPTS: "-Xmx512m"
+    volumes:
+      # SQLite database, password encryption key, drop-in JDBC drivers.
+      - mjdbcmcp_config:/mjdbcmcp_config
+
+volumes:
+  mjdbcmcp_config:

@@ -1,0 +1,19 @@
+# IDE / editors
+.idea/
+.nova/
+.vscode/
+*.swp
+
+
+# macOS
+.DS_Store
+
+# Gradle / Java
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Frontend
+node_modules/
+frontend/dist/
+.node/

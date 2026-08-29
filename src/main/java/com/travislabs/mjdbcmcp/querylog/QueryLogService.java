@@ -1,0 +1,250 @@
+package com.travislabs.mjdbcmcp.querylog;
+
+import com.travislabs.mjdbcmcp.Refusal;
+import com.travislabs.mjdbcmcp.config.AppProperties;
+import jakarta.annotation.PreDestroy;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+
+/**
+ * Records what the tools did, and tracks what they are doing right now.
+ *
+ * <p>Two halves with different lifetimes. In-flight calls live in a map and are gone when the call
+ * ends — a running query is not a fact that survives a restart. Finished calls go onto a bounded
+ * queue and are written by one background thread, so the log never puts itself on the path of a
+ * query. When the queue is full, records are dropped and counted; making an agent's query wait for
+ * the audit trail would be the wrong trade.
+ */
+@Service
+public class QueryLogService {
+
+    private static final Logger log = LoggerFactory.getLogger(QueryLogService.class);
+    private static final int WRITE_BATCH = 100;
+
+    private final QueryLogRepository repository;
+    private final AppProperties.QueryLog config;
+
+    private final Map<Long, Running> running = new ConcurrentHashMap<>();
+    private final AtomicLong ids = new AtomicLong();
+    private final AtomicLong dropped = new AtomicLong();
+    private final BlockingQueue<QueryExecution> pending;
+    private final Thread writer;
+    private volatile boolean stopping;
+
+    // Explicit: with a second constructor present, Spring has no single candidate to infer.
+    @org.springframework.beans.factory.annotation.Autowired
+    public QueryLogService(QueryLogRepository repository, AppProperties props) {
+        this(repository, props.queryLog());
+    }
+
+    /**
+     * Direct-configuration constructor, so the behaviour can be tested without a whole context.
+     * Package-private deliberately: two public constructors would leave Spring with no single
+     * autowire candidate.
+     */
+    QueryLogService(QueryLogRepository repository, AppProperties.QueryLog config) {
+        this.repository = repository;
+        this.config = config;
+        this.pending = new ArrayBlockingQueue<>(config.queueCapacity());
+        this.writer = new Thread(this::drainForever, "query-log-writer");
+        this.writer.setDaemon(true);
+        this.writer.start();
+    }
+
+    private record Running(long id, String datasource, String tool, String sql, Instant startedAt) {
+    }
+
+    /**
+     * Registers a call as in flight and returns the handle that finishes it. Always finish the
+     * handle — a leaked one leaves a query on the dashboard forever.
+     */
+    public Handle begin(String datasource, String tool, String sql) {
+        long id = ids.incrementAndGet();
+        String storedSql = config.storeSql() ? truncate(sql, config.maxSqlChars()) : null;
+        running.put(id, new Running(id, datasource, tool, storedSql, Instant.now()));
+        return new Handle(id);
+    }
+
+    /** Calls in flight right now, longest-running first — the ones an operator is looking for. */
+    public List<RunningQuery> running() {
+        Instant now = Instant.now();
+        List<RunningQuery> out = new ArrayList<>(running.size());
+        for (Running r : running.values()) {
+            out.add(new RunningQuery(r.id(), r.datasource(), r.tool(), r.sql(), r.startedAt(),
+                    Math.max(0, now.toEpochMilli() - r.startedAt().toEpochMilli())));
+        }
+        out.sort((a, b) -> Long.compare(b.elapsedMs(), a.elapsedMs()));
+        return out;
+    }
+
+    public QueryStats stats(java.time.Duration window, int slowestLimit) {
+        Instant since = Instant.now().minus(window);
+        String where = " WHERE started_epoch_ms >= ?";
+        List<Object> params = List.of(since.toEpochMilli());
+
+        QueryStats.Summary overall = repository.withPercentiles(
+                repository.summary(where, params), where, params);
+
+        List<QueryStats.Group> byDatasource = new ArrayList<>();
+        for (String name : repository.distinct("datasource", since)) {
+            String scoped = where + " AND datasource = ?";
+            List<Object> scopedParams = List.of(since.toEpochMilli(), name);
+            byDatasource.add(new QueryStats.Group(name, repository.withPercentiles(
+                    repository.summary(scoped, scopedParams), scoped, scopedParams)));
+        }
+
+        List<QueryStats.Group> byTool = new ArrayList<>();
+        for (String name : repository.distinct("tool", since)) {
+            // No percentiles per tool: the breakdown is for spotting which tool is busy or failing,
+            // and a p95 over a handful of calls is noise dressed as a number.
+            byTool.add(new QueryStats.Group(name,
+                    repository.summary(where + " AND tool = ?", List.of(since.toEpochMilli(), name))));
+        }
+
+        return new QueryStats(
+                overall,
+                byDatasource,
+                byTool,
+                repository.refusalCounts(since),
+                repository.slowest(since, slowestLimit),
+                repository.earliest(since).map(Instant::toString).orElse(null),
+                dropped.get());
+    }
+
+    public List<QueryExecution> recent(java.time.Duration window, int limit) {
+        return repository.recent(Instant.now().minus(window), limit);
+    }
+
+    /** Retention runs on a schedule rather than per write, so a burst is not also a delete storm. */
+    @Scheduled(fixedDelayString = "${mjdbcmcp.query-log.prune-interval-ms:300000}", initialDelay = 60_000)
+    void prune() {
+        if (!config.enabled()) {
+            return;
+        }
+        try {
+            int removed = repository.prune(Instant.now().minus(config.retention()), config.maxRows());
+            if (removed > 0) {
+                log.debug("Pruned {} query log records", removed);
+            }
+        } catch (RuntimeException e) {
+            log.warn("Query log prune failed: {}", e.getMessage());
+        }
+    }
+
+    /** The handle a caller closes to finish a record. */
+    public final class Handle {
+
+        private final long id;
+
+        private Handle(long id) {
+            this.id = id;
+        }
+
+        public void ok(Map<String, Object> payload) {
+            finish(QueryExecution.Outcome.OK, null, null, payload);
+        }
+
+        public void refused(Refusal refusal) {
+            finish(QueryExecution.Outcome.REFUSED, refusal.kind().name().toLowerCase(java.util.Locale.ROOT),
+                    refusal.getMessage(), null);
+        }
+
+        public void failed(Throwable error) {
+            finish(QueryExecution.Outcome.FAILED, null,
+                    error.getClass().getSimpleName() + ": " + error.getMessage(), null);
+        }
+
+        private void finish(QueryExecution.Outcome outcome, String refusalKind, String error,
+                            Map<String, Object> payload) {
+            Running started = running.remove(id);
+            if (started == null) {
+                return;
+            }
+            if (!config.enabled()) {
+                return;
+            }
+            long durationMs = Math.max(0, Instant.now().toEpochMilli() - started.startedAt().toEpochMilli());
+            QueryExecution record = new QueryExecution(null, started.datasource(), started.tool(),
+                    started.sql(), started.startedAt(), durationMs, outcome, refusalKind, error,
+                    intFrom(payload, "rowCount"), boolFrom(payload, "rowCapReached"),
+                    intFrom(payload, "updateCount"));
+            if (!pending.offer(record)) {
+                dropped.incrementAndGet();
+            }
+        }
+    }
+
+    private void drainForever() {
+        List<QueryExecution> batch = new ArrayList<>(WRITE_BATCH);
+        while (!stopping || !pending.isEmpty()) {
+            try {
+                QueryExecution first = pending.poll(500, TimeUnit.MILLISECONDS);
+                if (first == null) {
+                    continue;
+                }
+                batch.add(first);
+                pending.drainTo(batch, WRITE_BATCH - 1);
+                repository.insert(batch);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            } catch (RuntimeException e) {
+                // A failed write must not kill the writer thread, or logging stops silently for the
+                // rest of the process's life.
+                log.warn("Query log write failed, dropping {} record(s): {}", batch.size(), e.getMessage());
+                dropped.addAndGet(batch.size());
+            } finally {
+                batch.clear();
+            }
+        }
+    }
+
+    @PreDestroy
+    void flush() {
+        stopping = true;
+        try {
+            writer.join(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private static Integer intFrom(Map<String, Object> payload, String key) {
+        Object value = payload == null ? null : payload.get(key);
+        return value instanceof Number n ? n.intValue() : null;
+    }
+
+    private static Boolean boolFrom(Map<String, Object> payload, String key) {
+        Object value = payload == null ? null : payload.get(key);
+        return value instanceof Boolean b ? b : null;
+    }
+
+    private static String truncate(String value, int max) {
+        if (value == null) {
+            return null;
+        }
+        return value.length() <= max ? value : value.substring(0, max);
+    }
+
+    /** Exposed for the API so an operator can tell "nothing happened" from "logging is off". */
+    public boolean enabled() {
+        return config.enabled();
+    }
+
+    public Optional<Long> droppedRecords() {
+        long value = dropped.get();
+        return value == 0 ? Optional.empty() : Optional.of(value);
+    }
+}

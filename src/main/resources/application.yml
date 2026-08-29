@@ -1,0 +1,60 @@
+spring:
+  application:
+    name: mjdbcmcp
+  # Application database: SQLite in the config dir. WAL + a busy timeout keep the web UI and the
+  # MCP endpoint from tripping over each other; the pool stays small because this DB is tiny.
+  datasource:
+    url: "jdbc:sqlite:${mjdbcmcp.config-dir}/mjdbcmcp.db?journal_mode=WAL&busy_timeout=5000&foreign_keys=true"
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      pool-name: app-db
+      maximum-pool-size: 4
+      minimum-idle: 1
+  sql:
+    init:
+      mode: always
+      schema-locations: "classpath:db/schema.sql"
+
+server:
+  port: 8080
+  # Bind to loopback by default — the admin UI and the MCP endpoint are unauthenticated for now.
+  address: "127.0.0.1"
+
+mjdbcmcp:
+  config-dir: "${MJDBCMCP_CONFIG_DIR:${user.home}/.mjdbcmcp}"
+  mcp:
+    endpoint: "/mcp"
+    server-name: "mjdbcmcp"
+    # DNS-rebinding protection for the streamable HTTP transport. Empty lists disable the check.
+    allowed-origins:
+      - "http://localhost:8080"
+      - "http://127.0.0.1:8080"
+    allowed-hosts:
+      - "localhost:8080"
+      - "127.0.0.1:8080"
+    request-timeout: 60s
+    # Tools withheld regardless of Capability, purely to keep their definitions out of the agent's
+    # context. Narrowing never widens what a Capability permits (ADR-0001); disabling raw_execute
+    # while a Datasource grants writes is reported at startup.
+    disabled-tools: []
+
+  # One row per tool call, written off a bounded queue so logging never slows a query down.
+  # Bound parameter values are never stored; see docs/adr/0013.
+  query-log:
+    enabled: true
+    # Agent-written SQL can carry literal values. Turn this off to keep the timings without the text.
+    store-sql: true
+    max-sql-chars: 4000
+    retention: 7d
+    max-rows: 50000
+    queue-capacity: 1000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+logging:
+  level:
+    com.travislabs.mjdbcmcp: INFO

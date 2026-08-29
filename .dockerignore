@@ -1,0 +1,14 @@
+# The image builds from source; anything generated locally would only invalidate
+# layers or leak a host-built artifact into the build stage.
+.git
+.gitea
+.gradle
+build
+frontend/node_modules
+frontend/dist
+.idea
+.nova
+.vscode
+.DS_Store
+*.md
+!README.md

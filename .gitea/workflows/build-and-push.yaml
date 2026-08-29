@@ -1,0 +1,56 @@
+name: build-and-push
+
+on:
+  push:
+    branches: [main, dev]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # The registry serves a certificate the runner's daemon does not trust out
+      # of the box; pin the leaf it presents before logging in.
+      - name: Trust registry certificate
+        run: |
+          sudo mkdir -p /etc/docker/certs.d/git.research.travislabs.com
+          openssl s_client -showcerts -connect git.research.travislabs.com:443 \
+            </dev/null 2>/dev/null \
+            | awk 'BEGIN{p=0} /-----BEGIN CERTIFICATE-----/{p=1;cert=""} p{cert=cert $0"\n"} /-----END CERTIFICATE-----/{last=cert;p=0} END{printf "%s",last}' \
+            | sudo tee /etc/docker/certs.d/git.research.travislabs.com/ca.crt
+
+      - name: Log in to registry
+        run: |
+          echo "${{ secrets.REGISTRY_TOKEN }}" | \
+            docker login git.research.travislabs.com \
+              -u "${{ gitea.actor }}" --password-stdin
+
+      - name: Determine image tags
+        id: tags
+        run: |
+          IMAGE=git.research.travislabs.com/travis/mjdbcmcp
+          SHORT_SHA="${GITHUB_SHA::7}"
+          VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' build.gradle.kts)"
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            # Release builds from main: rolling latest + immutable version + commit pin.
+            TAGS="${IMAGE}:latest ${IMAGE}:${VERSION} ${IMAGE}:${SHORT_SHA}"
+          else
+            # Development branch: rolling dev tag + version-dev + commit pin.
+            TAGS="${IMAGE}:dev ${IMAGE}:${VERSION}-dev ${IMAGE}:${SHORT_SHA}"
+          fi
+          echo "Building tags: ${TAGS}"
+          echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        run: |
+          TAG_ARGS=""
+          for t in ${{ steps.tags.outputs.tags }}; do
+            TAG_ARGS="${TAG_ARGS} -t ${t}"
+          done
+          docker build ${TAG_ARGS} .
+          for t in ${{ steps.tags.outputs.tags }}; do
+            docker push "${t}"
+          done
