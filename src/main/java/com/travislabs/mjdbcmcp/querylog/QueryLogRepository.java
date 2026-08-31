@@ -67,6 +67,7 @@ public class QueryLogRepository {
                        SUM(CASE WHEN outcome = 'ok' THEN 1 ELSE 0 END) AS ok,
                        SUM(CASE WHEN outcome = 'refused' THEN 1 ELSE 0 END) AS refused,
                        SUM(CASE WHEN outcome = 'failed' THEN 1 ELSE 0 END) AS failed,
+                       SUM(CASE WHEN outcome = 'cancelled' THEN 1 ELSE 0 END) AS cancelled,
                        AVG(duration_ms) AS avg_ms,
                        MAX(duration_ms) AS max_ms,
                        SUM(COALESCE(row_count, 0)) AS rows_returned
@@ -75,6 +76,7 @@ public class QueryLogRepository {
                 .params(params)
                 .query((rs, n) -> new QueryStats.Summary(
                         rs.getLong("calls"), rs.getLong("ok"), rs.getLong("refused"), rs.getLong("failed"),
+                        rs.getLong("cancelled"),
                         nullableLong(rs, "avg_ms"), null, null, nullableLong(rs, "max_ms"),
                         rs.getLong("rows_returned")))
                 .single();
@@ -87,7 +89,7 @@ public class QueryLogRepository {
             return summary;
         }
         return new QueryStats.Summary(summary.calls(), summary.ok(), summary.refused(), summary.failed(),
-                summary.avgMs(), percentile(whereClause, params, summary.calls(), 50),
+                summary.cancelled(), summary.avgMs(), percentile(whereClause, params, summary.calls(), 50),
                 percentile(whereClause, params, summary.calls(), 95), summary.maxMs(), summary.rowsReturned());
     }
 

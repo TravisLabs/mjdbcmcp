@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS query_log (
     started_at       TEXT    NOT NULL,
     started_epoch_ms INTEGER NOT NULL,
     duration_ms      INTEGER NOT NULL,
-    outcome          TEXT    NOT NULL,   -- ok | refused | failed
+    outcome          TEXT    NOT NULL,   -- ok | refused | failed | cancelled
     refusal_kind     TEXT,
     error            TEXT,
     row_count        INTEGER,

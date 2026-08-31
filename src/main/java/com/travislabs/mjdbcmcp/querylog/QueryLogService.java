@@ -6,12 +6,15 @@ import jakarta.annotation.PreDestroy;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,7 +66,15 @@ public class QueryLogService {
         this.writer.start();
     }
 
-    private record Running(long id, String datasource, String tool, String sql, Instant startedAt) {
+    private record Running(
+            long id,
+            String datasource,
+            String tool,
+            String sql,
+            Instant startedAt,
+            String sessionId,
+            Thread executionThread,
+            AtomicBoolean cancelled) {
     }
 
     /**
@@ -71,10 +82,37 @@ public class QueryLogService {
      * handle — a leaked one leaves a query on the dashboard forever.
      */
     public Handle begin(String datasource, String tool, String sql) {
+        return begin(datasource, tool, sql, null);
+    }
+
+    /**
+     * Registers a call as in flight with an associated MCP session ID for cancellation support.
+     */
+    public Handle begin(String datasource, String tool, String sql, String sessionId) {
         long id = ids.incrementAndGet();
         String storedSql = config.storeSql() ? truncate(sql, config.maxSqlChars()) : null;
-        running.put(id, new Running(id, datasource, tool, storedSql, Instant.now()));
-        return new Handle(id);
+        AtomicBoolean cancelled = new AtomicBoolean(false);
+        running.put(id, new Running(id, datasource, tool, storedSql, Instant.now(), sessionId, Thread.currentThread(), cancelled));
+        return new Handle(id, cancelled);
+    }
+
+    /**
+     * Signals cancellation for all in-flight queries associated with the given session ID.
+     */
+    public void cancelSession(String sessionId, Object requestId, String reason) {
+        if (sessionId == null) {
+            return;
+        }
+        for (Running r : running.values()) {
+            if (sessionId.equals(r.sessionId())) {
+                r.cancelled().set(true);
+                if (r.executionThread() != null && r.executionThread().isAlive()) {
+                    log.info("Interrupting execution thread for cancelled query {} on session {} (request={}, reason={})",
+                            r.id(), sessionId, requestId, reason);
+                    r.executionThread().interrupt();
+                }
+            }
+        }
     }
 
     /** Calls in flight right now, longest-running first — the ones an operator is looking for. */
@@ -147,9 +185,11 @@ public class QueryLogService {
     public final class Handle {
 
         private final long id;
+        private final AtomicBoolean cancelled;
 
-        private Handle(long id) {
+        private Handle(long id, AtomicBoolean cancelled) {
             this.id = id;
+            this.cancelled = cancelled;
         }
 
         public void ok(Map<String, Object> payload) {
@@ -161,9 +201,16 @@ public class QueryLogService {
                     refusal.getMessage(), null);
         }
 
+        public void cancelled(String reason) {
+            finish(QueryExecution.Outcome.CANCELLED, null, reason, null);
+        }
+
         public void failed(Throwable error) {
-            finish(QueryExecution.Outcome.FAILED, null,
-                    error.getClass().getSimpleName() + ": " + error.getMessage(), null);
+            if ((cancelled != null && cancelled.get()) || isCancellation(error)) {
+                finish(QueryExecution.Outcome.CANCELLED, null, errorMessage(error), null);
+            } else {
+                finish(QueryExecution.Outcome.FAILED, null, errorMessage(error), null);
+            }
         }
 
         private void finish(QueryExecution.Outcome outcome, String refusalKind, String error,
@@ -184,6 +231,60 @@ public class QueryLogService {
                 dropped.incrementAndGet();
             }
         }
+    }
+
+    private static String errorMessage(Throwable error) {
+        if (error == null) {
+            return "Operation cancelled";
+        }
+        return error.getClass().getSimpleName() + ": " + error.getMessage();
+    }
+
+    public static boolean isCancellation(Throwable error) {
+        if (error == null) {
+            return false;
+        }
+        Throwable curr = error;
+        while (curr != null) {
+            if (curr instanceof InterruptedException
+                    || curr instanceof java.io.InterruptedIOException
+                    || curr instanceof java.nio.channels.ClosedByInterruptException
+                    || curr instanceof CancellationException) {
+                return true;
+            }
+            if (curr instanceof java.sql.SQLException sqlEx) {
+                String sqlState = sqlEx.getSQLState();
+                if ("57014".equals(sqlState)) { // Postgres query_canceled
+                    return true;
+                }
+                String msg = sqlEx.getMessage();
+                if (msg != null) {
+                    String lower = msg.toLowerCase(Locale.ROOT);
+                    if (lower.contains("canceling statement due to user request")
+                            || lower.contains("statement canceled")
+                            || lower.contains("statement cancelled")
+                            || lower.contains("query was cancelled")
+                            || lower.contains("query was canceled")
+                            || lower.contains("operation was aborted")
+                            || lower.contains("operation aborted")
+                            || lower.contains("operation cancelled")
+                            || lower.contains("operation canceled")) {
+                        return true;
+                    }
+                }
+            }
+            String topMsg = curr.getMessage();
+            if (topMsg != null) {
+                String lower = topMsg.toLowerCase(Locale.ROOT);
+                if (lower.contains("aborterror") || lower.contains("operation was aborted")
+                        || lower.contains("operation aborted") || lower.contains("operation canceled")
+                        || lower.contains("operation cancelled")) {
+                    return true;
+                }
+            }
+            curr = curr.getCause();
+        }
+        return false;
     }
 
     private void drainForever() {

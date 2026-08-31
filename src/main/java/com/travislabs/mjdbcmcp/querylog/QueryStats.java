@@ -29,6 +29,7 @@ public record QueryStats(
             long ok,
             long refused,
             long failed,
+            long cancelled,
             Long avgMs,
             Long p50Ms,
             Long p95Ms,
@@ -36,7 +37,7 @@ public record QueryStats(
             long rowsReturned) {
 
         public static Summary empty() {
-            return new Summary(0, 0, 0, 0, null, null, null, null, 0);
+            return new Summary(0, 0, 0, 0, 0, null, null, null, null, 0);
         }
     }
 

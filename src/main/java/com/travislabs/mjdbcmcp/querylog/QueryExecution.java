@@ -28,7 +28,9 @@ public record QueryExecution(
         /** The server declined: a Capability, the Object Allowlist, Classification, or arguments. */
         REFUSED,
         /** Something broke — usually the database saying no. */
-        FAILED;
+        FAILED,
+        /** The client or operator cancelled/aborted the operation. */
+        CANCELLED;
 
         public String wireName() {
             return name().toLowerCase(java.util.Locale.ROOT);

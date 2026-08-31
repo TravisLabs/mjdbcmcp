@@ -6,6 +6,7 @@ import {
 import ActivityPage from './ActivityPage'
 import DatasourceForm from './DatasourceForm'
 import ThemeSwitcher from './components/ThemeSwitcher'
+import { MangoLogo } from './components/icons'
 import { api, emptyDatasource, type Datasource, type DriverInfo, type PoolStats, type ServerInfo } from './api'
 
 /** Capabilities that write, so the badge can say so without listing all four. */
@@ -63,7 +64,10 @@ export default function App() {
     <>
       <Navbar className="mango-navbar mb-4">
         <Container className="d-flex align-items-center gap-3">
-          <NavbarBrand href="/" className="mpa-brand-label mb-0">mjdbcmcp</NavbarBrand>
+          <NavbarBrand href="/" className="d-flex align-items-center gap-2 text-decoration-none mb-0">
+            <MangoLogo size="1.8em" />
+            <span className="mpa-brand-label">Mango JDBC MCP</span>
+          </NavbarBrand>
           {server && (
             <span className="mpa-navbar-meta ms-auto d-none d-md-inline">
               MCP endpoint <code>{server.endpoint}</code> · {server.tools.length} tools

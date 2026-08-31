@@ -245,3 +245,25 @@
   color: var(--bs-navbar-color);
   opacity: .8;
 }
+
+/* Expandable SQL snippet in Activity tables */
+.sql-expandable {
+  cursor: pointer;
+  user-select: none;
+}
+.sql-expandable:hover code {
+  text-decoration: underline;
+}
+.sql-code-block {
+  font-family: var(--bs-font-monospace);
+  font-size: 0.8rem;
+  background-color: var(--bs-tertiary-bg);
+  color: var(--bs-body-color);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.375rem;
+  padding: 0.6rem 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 20rem;
+  overflow-y: auto;
+}

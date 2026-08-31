@@ -14,16 +14,41 @@ const WINDOWS = [
 ]
 
 const outcomeColour = (outcome: QueryExecution['outcome']) =>
-  outcome === 'OK' ? 'success' : outcome === 'REFUSED' ? 'warning' : 'danger'
+  outcome === 'OK' ? 'success' : outcome === 'REFUSED' ? 'warning' : outcome === 'CANCELLED' ? 'secondary' : 'danger'
 
-/** Truncated one-line SQL for a table cell; the full text is on the title attribute. */
+/** Expandable SQL component for activity tables. Shows single-line preview with click-to-expand code block. */
 function Sql({ sql }: { sql: string | null }) {
+  const [expanded, setExpanded] = useState(false)
   if (!sql) return <span className="text-body-secondary">—</span>
   const flat = sql.replace(/\s+/g, ' ').trim()
   return (
-    <code title={sql} className="small">
-      {flat.length > 90 ? `${flat.slice(0, 90)}…` : flat}
-    </code>
+    <div>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setExpanded(!expanded)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            setExpanded(!expanded)
+          }
+        }}
+        className="d-inline-flex align-items-center gap-1 sql-expandable text-decoration-none"
+        title={expanded ? 'Click to collapse' : 'Click to expand complete query'}
+      >
+        <span className="text-body-secondary" style={{ fontSize: '0.65rem' }}>
+          {expanded ? '▼' : '▶'}
+        </span>
+        <code className="small text-break">
+          {flat.length > 90 ? `${flat.slice(0, 90)}…` : flat}
+        </code>
+      </div>
+      {expanded && (
+        <pre className="sql-code-block mt-2 mb-0">
+          <code>{sql}</code>
+        </pre>
+      )}
+    </div>
   )
 }
 
@@ -49,6 +74,9 @@ function SummaryRow({ name, summary }: { name: string; summary: Summary }) {
       </td>
       <td className="text-end">
         {summary.failed > 0 ? <Badge color="danger">{summary.failed}</Badge> : '0'}
+      </td>
+      <td className="text-end">
+        {summary.cancelled > 0 ? <Badge color="secondary">{summary.cancelled}</Badge> : '0'}
       </td>
       <td className="text-end">{duration(summary.avgMs)}</td>
       <td className="text-end">{duration(summary.p95Ms)}</td>
@@ -196,8 +224,8 @@ export default function ActivityPage() {
                               hint={stats?.stats.windowFrom
                                 ? `since ${new Date(stats.stats.windowFrom).toLocaleString()}`
                                 : 'no records in this window'} /></Col>
-        <Col md={3}><StatTile label="Refused or failed" value={errorRate}
-                              hint={`${overall?.refused ?? 0} refused, ${overall?.failed ?? 0} failed`} /></Col>
+        <Col md={3}><StatTile label="Refused, failed or cancelled" value={errorRate}
+                              hint={`${overall?.refused ?? 0} refused, ${overall?.failed ?? 0} failed, ${overall?.cancelled ?? 0} cancelled`} /></Col>
         <Col md={3}><StatTile label="p95 duration" value={duration(overall?.p95Ms)}
                               hint={`median ${duration(overall?.p50Ms)}`} /></Col>
         <Col md={3}><StatTile label="Rows returned" value={String(overall?.rowsReturned ?? 0)}
@@ -213,13 +241,13 @@ export default function ActivityPage() {
                 <thead>
                   <tr>
                     <th>Datasource</th><th className="text-end">Calls</th><th className="text-end">Refused</th>
-                    <th className="text-end">Failed</th><th className="text-end">Avg</th>
+                    <th className="text-end">Failed</th><th className="text-end">Cancelled</th><th className="text-end">Avg</th>
                     <th className="text-end">p95</th><th className="text-end">Max</th><th className="text-end">Rows</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(stats?.stats.byDatasource.length ?? 0) === 0 && (
-                    <tr><td colSpan={8} className="text-center text-body-secondary py-3">No calls in this window.</td></tr>
+                    <tr><td colSpan={9} className="text-center text-body-secondary py-3">No calls in this window.</td></tr>
                   )}
                   {stats?.stats.byDatasource.map((g) => <SummaryRow key={g.name} {...g} />)}
                 </tbody>
@@ -234,13 +262,13 @@ export default function ActivityPage() {
                 <thead>
                   <tr>
                     <th>Tool</th><th className="text-end">Calls</th><th className="text-end">Refused</th>
-                    <th className="text-end">Failed</th><th className="text-end">Avg</th>
+                    <th className="text-end">Failed</th><th className="text-end">Cancelled</th><th className="text-end">Avg</th>
                     <th className="text-end">p95</th><th className="text-end">Max</th><th className="text-end">Rows</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(stats?.stats.byTool.length ?? 0) === 0 && (
-                    <tr><td colSpan={8} className="text-center text-body-secondary py-3">No calls in this window.</td></tr>
+                    <tr><td colSpan={9} className="text-center text-body-secondary py-3">No calls in this window.</td></tr>
                   )}
                   {stats?.stats.byTool.map((g) => <SummaryRow key={g.name} {...g} />)}
                 </tbody>

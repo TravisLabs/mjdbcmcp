@@ -319,7 +319,8 @@ public class DatabaseTools {
                 .build();
         BiFunction<McpSyncServerExchange, CallToolRequest, CallToolResult> guarded = (exchange, request) -> {
             String datasourceName = str(request, "datasource");
-            var handle = queryLog.begin(datasourceName, name, str(request, "sql"));
+            String sessionId = exchange != null ? exchange.sessionId() : null;
+            var handle = queryLog.begin(datasourceName, name, str(request, "sql"), sessionId);
             try {
                 Reply result = handler.handle(exchange, request);
                 CallToolResult rendered = render(result);

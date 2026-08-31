@@ -64,7 +64,7 @@ export interface QueryExecution {
   sql: string | null
   startedAt: string
   durationMs: number
-  outcome: 'OK' | 'REFUSED' | 'FAILED'
+  outcome: 'OK' | 'REFUSED' | 'FAILED' | 'CANCELLED'
   refusalKind: string | null
   error: string | null
   rowCount: number | null
@@ -77,6 +77,7 @@ export interface Summary {
   ok: number
   refused: number
   failed: number
+  cancelled: number
   avgMs: number | null
   p50Ms: number | null
   p95Ms: number | null

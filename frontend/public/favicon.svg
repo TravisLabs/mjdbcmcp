@@ -1,0 +1,40 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF9F1"/>
+      <stop offset="100%" stop-color="#FFEEDC"/>
+    </linearGradient>
+    <linearGradient id="mangoGrad" x1="20%" y1="0%" x2="85%" y2="100%">
+      <stop offset="0%" stop-color="#FFD54A"/>
+      <stop offset="50%" stop-color="#FF9233"/>
+      <stop offset="100%" stop-color="#F2542D"/>
+    </linearGradient>
+    <linearGradient id="leafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8BC34A"/>
+      <stop offset="100%" stop-color="#5C8A35"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+
+  <g transform="translate(252,290) rotate(-8)">
+    <!-- leaf -->
+    <path d="M26,-120 C5,-145 -10,-175 -22,-200 C-2,-185 18,-155 32,-128 Z" fill="url(#leafGrad)"/>
+    <path d="M28,-122 C12,-148 0,-172 -16,-196" stroke="#4A7029" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+    <!-- mango body -->
+    <path d="M24,-118 C72,-110 106,-56 104,10 C102,78 60,128 -2,130 C-64,132 -104,80 -100,12 C-97,-50 -60,-110 24,-118 Z" fill="url(#mangoGrad)"/>
+
+    <!-- edge highlight -->
+    <path d="M-85,-35 Q-75,-85 -10,-110" stroke="#FFFFFF" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.25"/>
+
+    <!-- eyes -->
+    <circle cx="-32" cy="-10" r="10" fill="#7A3B1E"/>
+    <circle cx="28" cy="-10" r="10" fill="#7A3B1E"/>
+    <circle cx="-35" cy="-13" r="3" fill="#FFE9C2"/>
+    <circle cx="25" cy="-13" r="3" fill="#FFE9C2"/>
+
+    <!-- smile -->
+    <path d="M-32,32 Q-2,62 34,28" stroke="#7A3B1E" stroke-width="9" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>

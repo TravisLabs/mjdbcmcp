@@ -1,6 +1,7 @@
 package com.travislabs.mjdbcmcp.config;
 
 import com.travislabs.mjdbcmcp.mcp.ToolSurface;
+import com.travislabs.mjdbcmcp.querylog.QueryLogService;
 import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.server.McpServer;
@@ -9,6 +10,7 @@ import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.DefaultServerTransportSecurityValidator;
 import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema.ServerCapabilities;
+import io.modelcontextprotocol.spec.McpSessionCancellationAdapter;
 import java.util.List;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -69,11 +71,12 @@ public class McpServerConfig {
     @Bean(destroyMethod = "closeGracefully")
     public McpSyncServer mcpSyncServer(HttpServletStreamableServerTransportProvider transport,
                                        ToolSurface surface,
+                                       QueryLogService queryLog,
                                        McpJsonMapper json,
                                        AppProperties props) {
         List<SyncToolSpecification> initial = surface.specifications();
         surface.adopt(initial);
-        return McpServer.sync(transport)
+        McpSyncServer server = McpServer.sync(transport)
                 .serverInfo(props.mcp().serverName(), "0.1.0")
                 .jsonMapper(json)
                 .capabilities(ServerCapabilities.builder().tools(true).build())
@@ -88,5 +91,8 @@ public class McpServerConfig {
                 .validateToolInputs(true)
                 .tools(initial)
                 .build();
+
+        McpSessionCancellationAdapter.enableCancellationSupport(transport, queryLog);
+        return server;
     }
 }

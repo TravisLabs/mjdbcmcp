@@ -62,15 +62,35 @@ class QueryLogServiceTest {
         record("demo", "raw_query", "SELECT 2", Map.of("rowCount", 7));
         refuse("demo", "raw_execute", Refusal.Kind.CAPABILITY);
         fail("demo", "raw_query");
-        awaitWritten(4);
+        cancel("demo", "raw_query", "Operation was aborted");
+        cancelViaSqlException("demo", "raw_query");
+        awaitWritten(6);
 
         var stats = service.stats(Duration.ofMinutes(10), 5);
 
-        assertThat(stats.overall().calls()).isEqualTo(4);
+        assertThat(stats.overall().calls()).isEqualTo(6);
         assertThat(stats.overall().ok()).isEqualTo(2);
         assertThat(stats.overall().refused()).isEqualTo(1);
         assertThat(stats.overall().failed()).isEqualTo(1);
+        assertThat(stats.overall().cancelled()).isEqualTo(2);
         assertThat(stats.overall().rowsReturned()).isEqualTo(10);
+    }
+
+    @Test
+    void cancelSessionSignalsInFlightQueries() {
+        var handle = service.begin("demo", "raw_query", "SELECT pg_sleep(10)", "test-session-123");
+        assertThat(service.running()).hasSize(1);
+
+        service.cancelSession("test-session-123", 42, "AbortError: The operation was aborted.");
+        handle.failed(new RuntimeException("Interrupted during query"));
+
+        awaitWritten(1);
+        assertThat(service.running()).isEmpty();
+        var recent = repository.recent(Instant.now().minus(Duration.ofMinutes(1)), 10);
+        assertThat(recent).singleElement().satisfies(q -> {
+            assertThat(q.outcome()).isEqualTo(QueryExecution.Outcome.CANCELLED);
+            assertThat(q.error()).contains("Interrupted during query");
+        });
     }
 
     @Test
@@ -203,6 +223,15 @@ class QueryLogServiceTest {
 
     private void fail(String datasource, String tool) {
         service.begin(datasource, tool, "SELECT 1").failed(new IllegalStateException("boom"));
+    }
+
+    private void cancel(String datasource, String tool, String reason) {
+        service.begin(datasource, tool, "SELECT 1").cancelled(reason);
+    }
+
+    private void cancelViaSqlException(String datasource, String tool) {
+        service.begin(datasource, tool, "SELECT 1").failed(
+                new java.sql.SQLException("ERROR: canceling statement due to user request", "57014"));
     }
 
     private void awaitWritten(int expected) {

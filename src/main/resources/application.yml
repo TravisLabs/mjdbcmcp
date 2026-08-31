@@ -58,3 +58,4 @@ management:
 logging:
   level:
     com.travislabs.mjdbcmcp: INFO
+    io.modelcontextprotocol.spec.McpTransport: WARN
