@@ -7,10 +7,30 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      NODE_TLS_REJECT_UNAUTHORIZED: '0'
     permissions:
       packages: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Build JARs
+        run: |
+          chmod +x gradlew
+          ./gradlew assemble --no-daemon
+
+      - name: Upload JAR artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: mjdbcmcp-jars
+          path: build/libs/*.jar
+          if-no-files-found: ignore
 
       # The registry serves a certificate the runner's daemon does not trust out
       # of the box; pin the leaf it presents before logging in.

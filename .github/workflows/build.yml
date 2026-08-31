@@ -35,8 +35,8 @@ jobs:
       - name: Run Integration Tests
         run: ./gradlew integrationTest
 
-      - name: Build Application Jar
-        run: ./gradlew bootJar
+      - name: Build Application Jars (Executable & Plain)
+        run: ./gradlew assemble
 
       - name: Upload Test Reports
         if: always()
@@ -45,10 +45,10 @@ jobs:
           name: test-reports
           path: build/reports/tests/
 
-      - name: Upload Application Artifact
+      - name: Upload Application Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mjdbcmcp-jar
+          name: mjdbcmcp-jars
           path: build/libs/*.jar
 
   docker:
