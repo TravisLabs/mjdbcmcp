@@ -78,6 +78,7 @@ public class ResultEncoder {
         return out;
     }
 
+    /** An encoded cell value with an indicator of whether character length truncation occurred. */
     private record Cell(Object value, boolean truncated) {
         static Cell of(Object value) {
             return new Cell(value, false);

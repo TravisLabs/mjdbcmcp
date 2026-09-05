@@ -54,9 +54,9 @@ type LogoColors = {
   vein: string; ink: string; spark: string; hi: number; glow: boolean; stroke: string | null
 }
 const LOGO: Record<ResolvedTheme, LogoColors> = {
-  light:      { bg: ['#FFF9F1', '#FFEEDC'], mango: ['#FFD54A', '#FF9233', '#F2542D'], leaf: ['#8BC34A', '#5C8A35'], vein: '#4A7029', ink: '#7A3B1E', spark: '#FFE9C2', hi: 0.25, glow: false, stroke: null },
-  dark:       { bg: ['#34271A', '#16100B'], mango: ['#FFD54A', '#FF9233', '#F2542D'], leaf: ['#9CCC55', '#5C8A35'], vein: '#3A5420', ink: '#3A2210', spark: '#FFE9C2', hi: 0.35, glow: true, stroke: null },
-  colorblind: { bg: ['#FFFFFF', '#FFFFFF'], mango: ['#F2B705', '#E69F00', '#D55E00'], leaf: ['#56B4E9', '#0072B2'], vein: '#005A8C', ink: '#15202B', spark: '#FFFFFF', hi: 0.30, glow: false, stroke: '#D7DEE5' },
+  light:      { bg: ['#F4F6F6', '#DFE1E0'], mango: ['#FFD54A', '#FF9233', '#F2542D'], leaf: ['#8BC34A', '#5C8A35'], vein: '#4A7029', ink: '#142024', spark: '#FFFFFF', hi: 0.25, glow: false, stroke: '#C8CECE' },
+  dark:       { bg: ['#182429', '#0F171A'], mango: ['#FFD54A', '#FF9233', '#F2542D'], leaf: ['#9CCC55', '#5C8A35'], vein: '#3A5420', ink: '#142024', spark: '#FFFFFF', hi: 0.35, glow: true, stroke: '#26373E' },
+  colorblind: { bg: ['#FFFFFF', '#EEF1F4'], mango: ['#F2B705', '#E69F00', '#D55E00'], leaf: ['#56B4E9', '#0072B2'], vein: '#005A8C', ink: '#15202B', spark: '#FFFFFF', hi: 0.30, glow: false, stroke: '#D0D2D5' },
   contrast:   { bg: ['#000000', '#000000'], mango: ['#FFE100', '#FFB000', '#FFB000'], leaf: ['#FFFFFF', '#CFCFCF'], vein: '#000000', ink: '#000000', spark: '#FFFFFF', hi: 0.45, glow: false, stroke: '#FFFFFF' },
 }
 

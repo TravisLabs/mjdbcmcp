@@ -21,9 +21,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/activity")
 public class ActivityApi {
 
+    /** Query log service for activity metrics and recent queries. */
     private final QueryLogService queryLog;
+    /** Datasource service for accessing connection pool statistics. */
     private final DatasourceService datasources;
 
+    /**
+     * Constructs ActivityApi with query log and datasource services.
+     *
+     * @param queryLog    query log service
+     * @param datasources datasource service
+     */
     public ActivityApi(QueryLogService queryLog, DatasourceService datasources) {
         this.queryLog = queryLog;
         this.datasources = datasources;
@@ -32,6 +40,8 @@ public class ActivityApi {
     /**
      * Calls in flight right now, plus live pool state. Polled at a second or two, so it stays
      * in-memory work only — no query log read on this path.
+     *
+     * @return map of running queries and live pool statistics
      */
     @GetMapping("/running")
     public Map<String, Object> running() {
@@ -48,6 +58,13 @@ public class ActivityApi {
                         "max", p.max())).toList());
     }
 
+    /**
+     * Returns aggregate activity statistics and slowest queries over the requested time window.
+     *
+     * @param windowMinutes time window in minutes
+     * @param slowest       maximum number of slowest queries to include
+     * @return map containing stats and window metadata
+     */
     @GetMapping("/stats")
     public Map<String, Object> stats(@RequestParam(defaultValue = "60") int windowMinutes,
                                      @RequestParam(defaultValue = "10") int slowest) {
@@ -59,10 +76,20 @@ public class ActivityApi {
                 "stats", stats);
     }
 
+    /**
+     * Returns recent query executions with pagination support.
+     *
+     * @param windowMinutes time window in minutes
+     * @param limit         maximum records to return
+     * @param offset        starting record offset
+     * @return list of recent query executions
+     */
     @GetMapping("/recent")
     public List<QueryExecution> recent(@RequestParam(defaultValue = "60") int windowMinutes,
-                                       @RequestParam(defaultValue = "50") int limit) {
-        return queryLog.recent(Duration.ofMinutes(clamp(windowMinutes, 1, 60 * 24 * 30)), clamp(limit, 1, 500));
+                                       @RequestParam(defaultValue = "50") int limit,
+                                       @RequestParam(defaultValue = "0") int offset) {
+        return queryLog.recent(Duration.ofMinutes(clamp(windowMinutes, 1, 60 * 24 * 30)),
+                clamp(limit, 1, 500), Math.max(0, offset));
     }
 
     private static int clamp(int value, int min, int max) {

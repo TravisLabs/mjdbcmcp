@@ -27,12 +27,26 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api")
 public class AdminApi {
 
+    /** Service for managing Datasource configurations. */
     private final DatasourceService datasources;
+    /** Registry of available JDBC drivers. */
     private final DriverRegistry drivers;
+    /** Tool surface provider for dynamic MCP tool set recalculation. */
     private final ToolSurface surface;
+    /** The running MCP server instance. */
     private final McpSyncServer mcpServer;
+    /** Application configuration properties. */
     private final AppProperties props;
 
+    /**
+     * Constructs AdminApi with required services and server references.
+     *
+     * @param datasources datasource service
+     * @param drivers     driver registry
+     * @param surface     tool surface
+     * @param mcpServer   MCP server instance
+     * @param props       application properties
+     */
     public AdminApi(DatasourceService datasources, DriverRegistry drivers,
                     ToolSurface surface, McpSyncServer mcpServer, AppProperties props) {
         this.datasources = datasources;
@@ -42,11 +56,22 @@ public class AdminApi {
         this.props = props;
     }
 
+    /**
+     * Lists all configured Datasources.
+     *
+     * @return list of Datasource DTOs
+     */
     @GetMapping("/datasources")
     public List<DatasourceDto> list() {
         return datasources.findAll().stream().map(DatasourceDto::of).toList();
     }
 
+    /**
+     * Creates a new Datasource and refreshes the MCP Tool Surface.
+     *
+     * @param dto input Datasource DTO
+     * @return created Datasource DTO
+     */
     @PostMapping("/datasources")
     @ResponseStatus(HttpStatus.CREATED)
     public DatasourceDto create(@Valid @RequestBody DatasourceDto dto) {
@@ -56,6 +81,13 @@ public class AdminApi {
         return created;
     }
 
+    /**
+     * Updates an existing Datasource and refreshes the MCP Tool Surface.
+     *
+     * @param id  primary key ID
+     * @param dto updated Datasource DTO
+     * @return updated Datasource DTO
+     */
     @PutMapping("/datasources/{id}")
     public DatasourceDto update(@PathVariable long id, @Valid @RequestBody DatasourceDto dto) {
         DatasourceDto updated = DatasourceDto.of(datasources.update(id, dto.toDomain()));
@@ -63,6 +95,11 @@ public class AdminApi {
         return updated;
     }
 
+    /**
+     * Deletes a Datasource and refreshes the MCP Tool Surface.
+     *
+     * @param id primary key ID
+     */
     @DeleteMapping("/datasources/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable long id) {
@@ -73,6 +110,9 @@ public class AdminApi {
     /**
      * Opens a one-shot pool against the submitted settings. A saved Datasource may be tested by id
      * with a blank password, which reuses the stored one.
+     *
+     * @param dto candidate Datasource DTO
+     * @return test outcome map
      */
     @PostMapping("/datasources/test")
     public Map<String, Object> test(@Valid @RequestBody DatasourceDto dto) {
@@ -89,6 +129,11 @@ public class AdminApi {
         }
     }
 
+    /**
+     * Returns live metrics for all active connection pools.
+     *
+     * @return list of pool statistics maps
+     */
     @GetMapping("/pools")
     public List<Map<String, Object>> pools() {
         return datasources.poolStats().stream()
@@ -102,6 +147,11 @@ public class AdminApi {
                 .toList();
     }
 
+    /**
+     * Reports registered and drop-in JDBC driver class names.
+     *
+     * @return map of driver metadata
+     */
     @GetMapping("/drivers")
     public Map<String, Object> drivers() {
         return Map.of(
@@ -110,6 +160,11 @@ public class AdminApi {
                 "directory", props.driversDir().toString());
     }
 
+    /**
+     * Reports server status, MCP endpoint details, active tools, and configuration warnings.
+     *
+     * @return server metadata map
+     */
     @GetMapping("/server")
     public Map<String, Object> server() {
         return Map.of(

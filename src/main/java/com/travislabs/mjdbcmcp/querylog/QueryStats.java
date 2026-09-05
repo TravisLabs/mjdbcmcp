@@ -45,6 +45,7 @@ public record QueryStats(
     public record Group(String name, Summary summary) {
     }
 
+    /** Count of refusals grouped by refusal kind. */
     public record RefusalCount(String kind, long count) {
     }
 }

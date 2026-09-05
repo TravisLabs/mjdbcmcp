@@ -176,8 +176,8 @@ export const api = {
   drivers: () => request<DriverInfo>('/drivers'),
   running: () => request<RunningResponse>('/activity/running'),
   stats: (windowMinutes: number) => request<StatsResponse>(`/activity/stats?windowMinutes=${windowMinutes}`),
-  recent: (windowMinutes: number, limit = 50) =>
-    request<QueryExecution[]>(`/activity/recent?windowMinutes=${windowMinutes}&limit=${limit}`),
+  recent: (windowMinutes: number, limit = 50, offset = 0) =>
+    request<QueryExecution[]>(`/activity/recent?windowMinutes=${windowMinutes}&limit=${limit}&offset=${offset}`),
 }
 
 /** ms → a short human duration. Long queries are the point, so seconds beat four-digit milliseconds. */

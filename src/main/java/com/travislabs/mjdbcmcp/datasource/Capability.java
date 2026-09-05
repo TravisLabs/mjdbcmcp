@@ -34,16 +34,30 @@ public enum Capability {
      */
     DDL_DROP;
 
-    /** True when this Capability permits writing; a Datasource with none of these stays read-only. */
+    /**
+     * True when this Capability permits writing; a Datasource with none of these stays read-only.
+     *
+     * @return true if this capability allows modifications (non-SELECT), false otherwise
+     */
     public boolean isWrite() {
         return this != SELECT;
     }
 
+    /**
+     * Returns the lowercase wire name of this Capability used in REST payloads and tool metadata.
+     *
+     * @return the lowercase wire name
+     */
     public String wireName() {
         return name().toLowerCase(Locale.ROOT);
     }
 
-    /** Parses the comma-separated form stored in the application database and sent over REST. */
+    /**
+     * Parses the comma-separated form stored in the application database and sent over REST.
+     *
+     * @param csv comma-separated capability names
+     * @return set of parsed {@link Capability} values
+     */
     public static Set<Capability> parse(String csv) {
         if (csv == null || csv.isBlank()) {
             return Set.of();
@@ -55,6 +69,12 @@ public enum Capability {
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
+    /**
+     * Formats a set of Capabilities as a comma-separated string of wire names.
+     *
+     * @param capabilities set of capabilities to format
+     * @return comma-separated wire names
+     */
     public static String format(Set<Capability> capabilities) {
         return capabilities.stream().map(Capability::wireName).collect(Collectors.joining(","));
     }

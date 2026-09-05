@@ -20,16 +20,29 @@ public class StartupReport {
 
     private static final Logger log = LoggerFactory.getLogger(StartupReport.class);
 
+    /** The Tool Surface for deriving configuration warnings. */
     private final ToolSurface surface;
+    /** The running MCP server. */
     private final McpSyncServer mcpServer;
+    /** Application configuration properties. */
     private final AppProperties props;
 
+    /**
+     * Constructs a StartupReport with required server components and properties.
+     *
+     * @param surface   the dynamic Tool Surface
+     * @param mcpServer the MCP server instance
+     * @param props     application configuration properties
+     */
     public StartupReport(ToolSurface surface, McpSyncServer mcpServer, AppProperties props) {
         this.surface = surface;
         this.mcpServer = mcpServer;
         this.props = props;
     }
 
+    /**
+     * Logs the active MCP endpoint, exposed tools, and any configuration warnings on application startup.
+     */
     @EventListener(ApplicationReadyEvent.class)
     public void report() {
         log.info("MCP endpoint {} exposing tools {}",

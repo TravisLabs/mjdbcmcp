@@ -36,17 +36,31 @@ public class QueryLogService {
     private static final Logger log = LoggerFactory.getLogger(QueryLogService.class);
     private static final int WRITE_BATCH = 100;
 
+    /** Repository for persisting and querying execution records. */
     private final QueryLogRepository repository;
+    /** Query log configuration settings. */
     private final AppProperties.QueryLog config;
 
+    /** Map of currently in-flight tool calls keyed by running execution ID. */
     private final Map<Long, Running> running = new ConcurrentHashMap<>();
+    /** Atomic sequence generator for execution IDs. */
     private final AtomicLong ids = new AtomicLong();
+    /** Counter of query log records dropped due to a full queue. */
     private final AtomicLong dropped = new AtomicLong();
+    /** Bounded queue of completed query execution records awaiting the background writer. */
     private final BlockingQueue<QueryExecution> pending;
+    /** Dedicated background daemon thread that drains the execution queue. */
     private final Thread writer;
+    /** Flag indicating that the service is shutting down. */
     private volatile boolean stopping;
 
     // Explicit: with a second constructor present, Spring has no single candidate to infer.
+    /**
+     * Constructs a QueryLogService using application properties.
+     *
+     * @param repository query log repository
+     * @param props      application configuration properties
+     */
     @org.springframework.beans.factory.annotation.Autowired
     public QueryLogService(QueryLogRepository repository, AppProperties props) {
         this(repository, props.queryLog());
@@ -66,6 +80,9 @@ public class QueryLogService {
         this.writer.start();
     }
 
+    /**
+     * Internal state for an in-flight tool call tracked in memory.
+     */
     private record Running(
             long id,
             String datasource,
@@ -127,6 +144,13 @@ public class QueryLogService {
         return out;
     }
 
+    /**
+     * Aggregates activity metrics and statistics over the specified time window.
+     *
+     * @param window       time window Duration
+     * @param slowestLimit maximum number of slowest queries to include
+     * @return calculated {@link QueryStats}
+     */
     public QueryStats stats(java.time.Duration window, int slowestLimit) {
         Instant since = Instant.now().minus(window);
         String where = " WHERE started_epoch_ms >= ?";
@@ -161,8 +185,27 @@ public class QueryLogService {
                 dropped.get());
     }
 
+    /**
+     * Retrieves recent query executions within the specified time window.
+     *
+     * @param window time window Duration
+     * @param limit  maximum number of records to return
+     * @return list of recent query execution records
+     */
     public List<QueryExecution> recent(java.time.Duration window, int limit) {
-        return repository.recent(Instant.now().minus(window), limit);
+        return recent(window, limit, 0);
+    }
+
+    /**
+     * Retrieves paginated recent query executions within the specified time window.
+     *
+     * @param window time window Duration
+     * @param limit  maximum number of records to return
+     * @param offset starting record offset
+     * @return list of recent query execution records
+     */
+    public List<QueryExecution> recent(java.time.Duration window, int limit, int offset) {
+        return repository.recent(Instant.now().minus(window), limit, offset);
     }
 
     /** Retention runs on a schedule rather than per write, so a burst is not also a delete storm. */
@@ -184,7 +227,9 @@ public class QueryLogService {
     /** The handle a caller closes to finish a record. */
     public final class Handle {
 
+        /** In-flight execution ID. */
         private final long id;
+        /** Cancellation flag shared with session-level cancellation handlers. */
         private final AtomicBoolean cancelled;
 
         private Handle(long id, AtomicBoolean cancelled) {
@@ -192,19 +237,39 @@ public class QueryLogService {
             this.cancelled = cancelled;
         }
 
+        /**
+         * Marks the query execution as successfully completed with the given reply payload.
+         *
+         * @param payload tool execution reply payload
+         */
         public void ok(Map<String, Object> payload) {
             finish(QueryExecution.Outcome.OK, null, null, payload);
         }
 
+        /**
+         * Marks the query execution as refused due to a configuration or policy violation.
+         *
+         * @param refusal the refusal exception
+         */
         public void refused(Refusal refusal) {
             finish(QueryExecution.Outcome.REFUSED, refusal.kind().name().toLowerCase(java.util.Locale.ROOT),
                     refusal.getMessage(), null);
         }
 
+        /**
+         * Marks the query execution as cancelled.
+         *
+         * @param reason cancellation reason
+         */
         public void cancelled(String reason) {
             finish(QueryExecution.Outcome.CANCELLED, null, reason, null);
         }
 
+        /**
+         * Marks the query execution as failed with the given exception or error.
+         *
+         * @param error the failure cause
+         */
         public void failed(Throwable error) {
             if ((cancelled != null && cancelled.get()) || isCancellation(error)) {
                 finish(QueryExecution.Outcome.CANCELLED, null, errorMessage(error), null);

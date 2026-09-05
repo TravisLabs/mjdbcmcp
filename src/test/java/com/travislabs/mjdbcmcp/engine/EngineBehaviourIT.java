@@ -42,20 +42,28 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @EnabledIfDockerAvailable
 class EngineBehaviourIT {
 
+    /** PostgreSQL test container. */
     @Container
     static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:16-alpine");
 
+    /** MySQL test container. */
     @Container
     static final MySQLContainer MYSQL = new MySQLContainer("mysql:8.4");
 
+    /** Temporary configuration directory. */
     @TempDir
     static Path configDir;
 
+    /** Connection pool registry under test. */
     private static PoolRegistry pools;
+    /** Statement runner under test. */
     private static StatementRunner runner;
+    /** SQL classifier instance. */
     private static SqlClassifier classifier;
+    /** Metadata reader under test. */
     private static MetadataReader metadata;
 
+    /** Initializes shared components before all container tests. */
     @BeforeAll
     static void wire() {
         var props = new AppProperties(configDir,
@@ -68,6 +76,7 @@ class EngineBehaviourIT {
         metadata = new MetadataReader();
     }
 
+    /** Closes all open connection pools after all container tests finish. */
     @AfterAll
     static void closePools() {
         for (String name : List.of("pg-read", "pg-write", "mysql-read", "mysql-write", "pg-rows", "pg-script")) {
@@ -77,6 +86,7 @@ class EngineBehaviourIT {
 
     // ── Read-only Connection enforcement ──────────────────────────────────────────────────────
 
+    /** Verifies that a read-only PostgreSQL connection enforces read-only mode at the database engine level. */
     @Test
     void selectOnlyDatasourceIsRefusedAWriteByTheEngineItself() throws Exception {
         seedPostgres();
@@ -91,6 +101,7 @@ class EngineBehaviourIT {
         }
     }
 
+    /** Verifies that a read-only MySQL connection enforces read-only mode at the database engine level. */
     @Test
     void selectOnlyMysqlDatasourceIsAlsoRefusedAWriteByTheEngine() throws Exception {
         seedMysql();
@@ -107,6 +118,7 @@ class EngineBehaviourIT {
         }
     }
 
+    /** Verifies that write-capable Datasources create writable JDBC connections. */
     @Test
     void writeCapableDatasourceIsNotReadOnly() throws Exception {
         seedPostgres();
@@ -122,6 +134,7 @@ class EngineBehaviourIT {
 
     // ── Atomic multi-statement script execution & rollback ─────────────────────────────────────
 
+    /** Verifies atomic execution and commit of multi-statement scripts against PostgreSQL. */
     @Test
     void atomicScriptExecutesAndCommitsAllStatements() throws Exception {
         seedPostgres();
@@ -148,6 +161,7 @@ class EngineBehaviourIT {
         }
     }
 
+    /** Verifies that transaction errors roll back all prior statements in a multi-statement script against PostgreSQL. */
     @Test
     void atomicScriptRollsBackEntirelyIfAnyStatementFails() throws Exception {
         seedPostgres();
@@ -174,6 +188,7 @@ class EngineBehaviourIT {
 
     // ── setMaxRows ────────────────────────────────────────────────────────────────────────────
 
+    /** Verifies engine setMaxRows enforcement and result truncation indicators against PostgreSQL. */
     @Test
     void rowCapIsEnforcedAndReported() throws Exception {
         seedPostgres();
@@ -192,6 +207,7 @@ class EngineBehaviourIT {
         }
     }
 
+    /** Verifies accurate precision preservation for nulls and high-precision numeric values without lossy float conversions. */
     @Test
     void nullsAndBigNumericsSurviveEncoding() throws Exception {
         seedPostgres();
@@ -212,6 +228,7 @@ class EngineBehaviourIT {
 
     // ── DatabaseMetaData shape, on both engines ───────────────────────────────────────────────
 
+    /** Verifies table metadata reading and column introspection against PostgreSQL. */
     @Test
     void postgresMetadataDescribesTheTable() throws Exception {
         seedPostgres();
@@ -226,6 +243,7 @@ class EngineBehaviourIT {
         }
     }
 
+    /** Verifies table metadata reading and column introspection against MySQL. */
     @Test
     void mysqlMetadataDescribesTheTable() throws Exception {
         seedMysql();
@@ -244,6 +262,7 @@ class EngineBehaviourIT {
         }
     }
 
+    /** Verifies that the Object Allowlist hides excluded tables from metadata introspection queries. */
     @Test
     void allowlistHidesTablesFromIntrospection() throws Exception {
         seedPostgres();

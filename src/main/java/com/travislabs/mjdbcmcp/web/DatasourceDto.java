@@ -41,6 +41,12 @@ public record DatasourceDto(
         long maxLifetimeMs,
         String validationQuery) {
 
+    /**
+     * Converts a domain {@link Datasource} entity into a wire DTO, concealing the plaintext password.
+     *
+     * @param d Datasource entity
+     * @return DatasourceDto instance
+     */
     public static DatasourceDto of(Datasource d) {
         return new DatasourceDto(d.id(), d.name(), d.description(), d.jdbcUrl(), d.driverClass(),
                 d.username(), null, d.password() != null && !d.password().isEmpty(),
@@ -53,6 +59,11 @@ public record DatasourceDto(
                 d.maxLifetimeMs(), d.validationQuery());
     }
 
+    /**
+     * Converts this DTO into a domain {@link Datasource} entity.
+     *
+     * @return domain Datasource instance
+     */
     public Datasource toDomain() {
         return new Datasource(id, name, description, jdbcUrl, driverClass, username, password,
                 parseCapabilities(), ObjectAllowlist.parse(objectAllowlist), parseDisabledTools(),

@@ -28,13 +28,18 @@ import org.springframework.jdbc.core.simple.JdbcClient;
  */
 class QueryLogServiceTest {
 
+    /** Temporary directory for application SQLite database. */
     @TempDir
     Path configDir;
 
+    /** SQLite datasource connection pool. */
     private HikariDataSource dataSource;
+    /** Query log repository instance. */
     private QueryLogRepository repository;
+    /** Query log service under test. */
     private QueryLogService service;
 
+    /** Sets up database schema and services before each test. */
     @BeforeEach
     void setUp() throws IOException {
         HikariConfig cfg = new HikariConfig();
@@ -51,11 +56,13 @@ class QueryLogServiceTest {
         service = new QueryLogService(repository, props(true, true));
     }
 
+    /** Closes the database pool after each test. */
     @AfterEach
     void tearDown() {
         dataSource.close();
     }
 
+    /** Verifies aggregation of query execution outcomes and summary counters. */
     @Test
     void recordsOutcomesAndCountsThem() {
         record("demo", "raw_query", "SELECT 1", Map.of("rowCount", 3));
@@ -76,6 +83,7 @@ class QueryLogServiceTest {
         assertThat(stats.overall().rowsReturned()).isEqualTo(10);
     }
 
+    /** Verifies session-scoped cancellation signals interrupt execution and record cancelled outcomes. */
     @Test
     void cancelSessionSignalsInFlightQueries() {
         var handle = service.begin("demo", "raw_query", "SELECT pg_sleep(10)", "test-session-123");
@@ -93,6 +101,7 @@ class QueryLogServiceTest {
         });
     }
 
+    /** Verifies refusal statistics grouping by refusal kind. */
     @Test
     void refusalsAreBrokenDownByKind() {
         refuse("demo", "raw_execute", Refusal.Kind.CAPABILITY);
@@ -107,6 +116,7 @@ class QueryLogServiceTest {
                         org.assertj.core.api.Assertions.tuple("not_allowlisted", 1L));
     }
 
+    /** Verifies p50 and p95 percentile calculations from recorded durations. */
     @Test
     void percentilesComeFromTheRealDistribution() {
         // 100 records with durations 1..100ms, written directly so the timings are exact.
@@ -126,6 +136,7 @@ class QueryLogServiceTest {
         assertThat(overall.p95Ms()).isBetween(95L, 96L);
     }
 
+    /** Verifies activity statistics grouping by datasource and tool name. */
     @Test
     void breakdownsSplitByDatasourceAndTool() {
         record("alpha", "raw_query", "SELECT 1", Map.of("rowCount", 1));
@@ -142,6 +153,7 @@ class QueryLogServiceTest {
                 .containsExactly("describe_table", "raw_query");
     }
 
+    /** Verifies that in-flight queries appear in the running list and disappear once finished. */
     @Test
     void runningQueriesAppearWhileInFlightAndVanishAfter() {
         var handle = service.begin("demo", "raw_query", "SELECT pg_sleep(10)");
@@ -158,6 +170,7 @@ class QueryLogServiceTest {
         assertThat(service.running()).isEmpty();
     }
 
+    /** Verifies descending sort order by elapsed duration for in-flight queries. */
     @Test
     void runningQueriesAreSortedLongestFirst() throws InterruptedException {
         var first = service.begin("demo", "raw_query", "old");
@@ -170,6 +183,7 @@ class QueryLogServiceTest {
         second.ok(Map.of());
     }
 
+    /** Verifies pruning of expired records and enforcement of table row caps. */
     @Test
     void retentionDropsOldRecordsAndEnforcesTheRowCap() {
         Instant old = Instant.now().minus(Duration.ofDays(30));
@@ -185,6 +199,7 @@ class QueryLogServiceTest {
         assertThat(repository.count()).as("row cap").isEqualTo(2);
     }
 
+    /** Verifies that disabled logging tracks active queries in memory without database persistence. */
     @Test
     void disabledLoggingStillTracksRunningQueries() {
         var disabled = new QueryLogService(repository, props(false, true));
@@ -197,6 +212,31 @@ class QueryLogServiceTest {
         assertThat(repository.count()).as("nothing written when disabled").isZero();
     }
 
+    /** Verifies paginated retrieval of recent query execution records. */
+    @Test
+    void recentSupportsPaginationWithLimitAndOffset() {
+        for (int i = 1; i <= 5; i++) {
+            record("demo", "raw_query", "SELECT " + i, Map.of("rowCount", i));
+        }
+        awaitWritten(5);
+
+        var page1 = service.recent(Duration.ofMinutes(5), 2, 0);
+        var page2 = service.recent(Duration.ofMinutes(5), 2, 2);
+        var page3 = service.recent(Duration.ofMinutes(5), 2, 4);
+        var emptyPage = service.recent(Duration.ofMinutes(5), 2, 6);
+
+        assertThat(page1).hasSize(2);
+        assertThat(page2).hasSize(2);
+        assertThat(page3).hasSize(1);
+        assertThat(emptyPage).isEmpty();
+
+        // Most recent first (SELECT 5, SELECT 4, ...)
+        assertThat(page1).extracting(QueryExecution::sql).containsExactly("SELECT 5", "SELECT 4");
+        assertThat(page2).extracting(QueryExecution::sql).containsExactly("SELECT 3", "SELECT 2");
+        assertThat(page3).extracting(QueryExecution::sql).containsExactly("SELECT 1");
+    }
+
+    /** Verifies that statement SQL is withheld when storeSql is disabled. */
     @Test
     void sqlIsWithheldWhenStoreSqlIsOff() {
         var noSql = new QueryLogService(repository, props(true, false));

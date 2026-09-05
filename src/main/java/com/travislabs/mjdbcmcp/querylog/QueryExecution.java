@@ -32,10 +32,21 @@ public record QueryExecution(
         /** The client or operator cancelled/aborted the operation. */
         CANCELLED;
 
+        /**
+         * Returns the lowercase wire name of the outcome.
+         *
+         * @return the wire name string
+         */
         public String wireName() {
             return name().toLowerCase(java.util.Locale.ROOT);
         }
 
+        /**
+         * Parses a case-insensitive outcome string into an {@link Outcome}.
+         *
+         * @param value outcome string
+         * @return parsed Outcome
+         */
         public static Outcome parse(String value) {
             return valueOf(value.toUpperCase(java.util.Locale.ROOT));
         }

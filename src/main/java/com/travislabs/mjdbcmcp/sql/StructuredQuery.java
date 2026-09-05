@@ -29,6 +29,18 @@ public final class StructuredQuery {
     private StructuredQuery() {
     }
 
+    /**
+     * Builds a parameterized SELECT statement from structured parameters.
+     *
+     * @param quote   identifier quote character/string
+     * @param schema  optional schema name
+     * @param table   table name
+     * @param columns columns to select, or null/empty for all
+     * @param filters predicate filters
+     * @param orderBy order-by specifications
+     * @param limit   row limit
+     * @return built SQL string and parameter list
+     */
     @SuppressWarnings("unchecked")
     public static Built build(String quote, String schema, String table, List<String> columns,
                               List<Map<String, Object>> filters, List<Map<String, Object>> orderBy, Integer limit) {

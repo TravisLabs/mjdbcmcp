@@ -21,21 +21,45 @@ import org.springframework.stereotype.Component;
 @Component
 public class SecretCipher {
 
+    /** AES-256-GCM text encryptor instance. */
     private final TextEncryptor encryptor;
 
+    /**
+     * Initializes the cipher by loading an existing encryption key from the secret key file or generating a new one.
+     *
+     * @param props application properties providing the secret key file path
+     */
     public SecretCipher(AppProperties props) {
         Properties keys = loadOrCreate(props.secretKeyFile());
         this.encryptor = Encryptors.delux(keys.getProperty("key"), keys.getProperty("salt"));
     }
 
+    /**
+     * Encrypts plaintext password into an encrypted string representation.
+     *
+     * @param plaintext the raw password to encrypt
+     * @return encrypted ciphertext, or null if input is null or empty
+     */
     public String encrypt(String plaintext) {
         return plaintext == null || plaintext.isEmpty() ? null : encryptor.encrypt(plaintext);
     }
 
+    /**
+     * Decrypts ciphertext back to plaintext password.
+     *
+     * @param ciphertext the encrypted password string
+     * @return decrypted plaintext password, or null if input is null or empty
+     */
     public String decrypt(String ciphertext) {
         return ciphertext == null || ciphertext.isEmpty() ? null : encryptor.decrypt(ciphertext);
     }
 
+    /**
+     * Loads the encryption key and salt from the given file, or generates a fresh key file.
+     *
+     * @param file path to the secret key file
+     * @return properties containing the encryption key and salt
+     */
     private static Properties loadOrCreate(Path file) {
         Properties props = new Properties();
         try {
@@ -61,6 +85,11 @@ public class SecretCipher {
         }
     }
 
+    /**
+     * Attempts to restrict POSIX file permissions to owner read/write only.
+     *
+     * @param file path to the file to secure
+     */
     private static void trySetOwnerOnly(Path file) {
         try {
             Files.setPosixFilePermissions(file, EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));

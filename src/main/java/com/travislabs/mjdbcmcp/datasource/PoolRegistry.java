@@ -20,13 +20,26 @@ public class PoolRegistry {
 
     private static final Logger log = LoggerFactory.getLogger(PoolRegistry.class);
 
+    /** Active HikariCP connection pools keyed by Datasource name. */
     private final Map<String, HikariDataSource> pools = new ConcurrentHashMap<>();
+    /** Registry of available JDBC drivers. */
     private final DriverRegistry drivers;
 
+    /**
+     * Constructs the PoolRegistry with the driver registry.
+     *
+     * @param drivers JDBC driver registry
+     */
     public PoolRegistry(DriverRegistry drivers) {
         this.drivers = drivers;
     }
 
+    /**
+     * Obtains or lazily creates the HikariCP connection pool for the given Datasource.
+     *
+     * @param d the target Datasource
+     * @return the active {@link HikariDataSource}
+     */
     public HikariDataSource pool(Datasource d) {
         return pools.computeIfAbsent(d.name(), name -> create(d));
     }
@@ -40,6 +53,11 @@ public class PoolRegistry {
         }
     }
 
+    /**
+     * Collects live pool statistics for all active connection pools.
+     *
+     * @return sorted list of pool statistics
+     */
     public List<PoolStats> stats() {
         List<PoolStats> out = new ArrayList<>();
         pools.forEach((name, ds) -> {
@@ -119,6 +137,9 @@ public class PoolRegistry {
         }
     }
 
+    /**
+     * Closes all active connection pools on application shutdown.
+     */
     @PreDestroy
     void closeAll() {
         pools.values().forEach(HikariDataSource::close);

@@ -1,12 +1,11 @@
 /* ===========================================================================
-   Mango theme — IBM Plex typography + brand palette mapped onto Bootstrap.
+   Oceanside Silver theme — IBM Plex typography + brand palette mapped onto Bootstrap.
    Loaded after the Bootswatch stylesheet (ThemeContext inserts that link as the
    first <head> child), so these overrides win the cascade.
 
-   Ported verbatim from MangoPersonalAssistant's frontend/src/style.css (theme
-   section only — its app-shell rules are chat-specific and left behind). The
-   mpa-/mango- names are kept deliberately so updates over there drop straight
-   in here. Palette source: MPA's frontend/theme/mango-color-palette.html.
+   Palette source: /Users/travis/Projects/ThemeLibrary/theme/palettes/oceanside-silver.html
+   The mpa-/mango- names are kept deliberately so updates re-port as a straight
+   overwrite.
    ========================================================================== */
 
 /* Self-hosted fonts (latin subset, served from /public/fonts — no web fetch) */
@@ -19,13 +18,21 @@
 @font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/ibm-plex-mono-600.woff2') format('woff2'); }
 
 :root {
-  /* Brand palette (constant across themes) */
-  --mango-gold:   #FFD54A;
-  --mango-orange: #FF9233;
-  --mango-ember:  #F2542D;
-  --mango-leaf:   #8BC34A;
-  --mango-leaf-deep: #5C8A35;
-  --mango-cream:  #FFE9C2;
+  /* Brand palette: Oceanside Silver (Sherwin-Williams ColorSnap) */
+  --oceanside:        #015A6B;
+  --azure-tide:       #436585;
+  --rock-candy:       #DFE1E0;
+  --samovar-silver:   #B8BEBE;
+  --grizzle-gray:     #636562;
+  --pale-moss:        #DCC797;
+  --pink-shadow:      #DEC3B9;
+  --country-tweed:    #837B68;
+  --alpaca:           #CCC5BD;
+  --pale-pink:        #EEE6DE;
+  --silver-pale:      #F4F6F6;
+  --deep-slate:       #142024;
+  --oceanside-cyan:   #4BA3B5;
+  --midnight-slate:   #0F171A;
 
   /* Typography */
   --bs-body-font-family: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -34,52 +41,56 @@
 
 /* Per-theme brand role colours. data-bs-theme stays light|dark for Bootstrap's
    component theming; data-mpa-theme carries the palette (light | dark |
-   colorblind | contrast). Source: frontend/theme/mango-color-palette.html.
+   colorblind | contrast). Source: oceanside-silver.html.
    --bs-* role vars feed buttons, links, badges and text utilities; --mpa-on-
    primary is the readable ink on a primary fill. */
 [data-mpa-theme="light"] {
-  --bs-primary: #FF9233; --bs-primary-rgb: 255, 146, 51; --mpa-on-primary: #3A2210;
-  --bs-secondary: #8C7B6E; --bs-secondary-rgb: 140, 123, 110;
-  --bs-success: #5C8A35; --bs-success-rgb: 92, 138, 53;
-  --bs-info: #2A93B0; --bs-info-rgb: 42, 147, 176;
-  --bs-warning: #FFD54A; --bs-warning-rgb: 255, 213, 74;
-  --bs-danger: #F2542D; --bs-danger-rgb: 242, 84, 45;
-  --bs-link-color: #C85A1A; --bs-link-color-rgb: 200, 90, 26;
-  --bs-link-hover-color: #A8430E; --bs-link-hover-color-rgb: 168, 67, 14;
-  --bs-primary-text-emphasis: #8A4A22; --bs-primary-bg-subtle: #FFEAD6; --bs-primary-border-subtle: #FFD3AC;
+  --bs-primary: #015A6B; --bs-primary-rgb: 1, 90, 107; --mpa-on-primary: #FFFFFF;
+  --bs-secondary: #436585; --bs-secondary-rgb: 67, 101, 133;
+  --bs-success: #466B50; --bs-success-rgb: 70, 107, 80;
+  --bs-info: #1F6888; --bs-info-rgb: 31, 104, 136;
+  --bs-warning: #876614; --bs-warning-rgb: 135, 102, 20;
+  --bs-danger: #A3413B; --bs-danger-rgb: 163, 65, 59;
+  --bs-link-color: #015A6B; --bs-link-color-rgb: 1, 90, 107;
+  --bs-link-hover-color: #01414D; --bs-link-hover-color-rgb: 1, 65, 77;
+  --bs-primary-text-emphasis: #015A6B; --bs-primary-bg-subtle: #C8DADD; --bs-primary-border-subtle: #BFD4D7;
 }
 [data-mpa-theme="dark"] {
-  --bs-primary: #FF9233; --bs-primary-rgb: 255, 146, 51; --mpa-on-primary: #3A2210;
-  --bs-secondary: #6B5847; --bs-secondary-rgb: 107, 88, 71;
-  --bs-success: #9CCC55; --bs-success-rgb: 156, 204, 85;
-  --bs-info: #4FB3C9; --bs-info-rgb: 79, 179, 201;
-  --bs-warning: #FFD54A; --bs-warning-rgb: 255, 213, 74;
-  --bs-danger: #FF5C42; --bs-danger-rgb: 255, 92, 66;
-  --bs-link-color: #FFAD5C; --bs-link-color-rgb: 255, 173, 92;
-  --bs-link-hover-color: #FFC591; --bs-link-hover-color-rgb: 255, 197, 145;
-  --bs-primary-text-emphasis: #FFC591; --bs-primary-bg-subtle: #3A2A1B; --bs-primary-border-subtle: #5C4327;
+  --bs-primary: #4BA3B5; --bs-primary-rgb: 75, 163, 181; --mpa-on-primary: #000000;
+  --bs-secondary: #88A4BD; --bs-secondary-rgb: 136, 164, 189;
+  --bs-success: #7CAE88; --bs-success-rgb: 124, 174, 136;
+  --bs-info: #66B5D6; --bs-info-rgb: 102, 181, 214;
+  --bs-warning: #DCC797; --bs-warning-rgb: 220, 199, 151;
+  --bs-danger: #DE7A74; --bs-danger-rgb: 222, 122, 116;
+  --bs-link-color: #5DB5C7; --bs-link-color-rgb: 93, 181, 199;
+  --bs-link-hover-color: #7ED9EC; --bs-link-hover-color-rgb: 126, 217, 236;
+  --bs-primary-text-emphasis: #7ED9EC; --bs-primary-bg-subtle: #1A3036; --bs-primary-border-subtle: #1E3A41;
+  --bs-body-bg: #0F171A; --bs-body-bg-rgb: 15, 23, 26;
+  --bs-body-color: #DFE1E0; --bs-body-color-rgb: 223, 225, 224;
+  --bs-secondary-bg: #182429; --bs-tertiary-bg: #1B262B;
+  --bs-border-color: #26373E;
 }
 [data-mpa-theme="colorblind"] {
-  --bs-primary: #E69F00; --bs-primary-rgb: 230, 159, 0; --mpa-on-primary: #1A1200;
-  --bs-secondary: #6B7A86; --bs-secondary-rgb: 107, 122, 134;
-  --bs-success: #009E73; --bs-success-rgb: 0, 158, 115;
-  --bs-info: #56B4E9; --bs-info-rgb: 86, 180, 233;
-  --bs-warning: #F0E442; --bs-warning-rgb: 240, 228, 66;
+  --bs-primary: #0072B2; --bs-primary-rgb: 0, 114, 178; --mpa-on-primary: #FFFFFF;
+  --bs-secondary: #209CE2; --bs-secondary-rgb: 32, 156, 226;
+  --bs-success: #00419E; --bs-success-rgb: 0, 65, 158;
+  --bs-info: #CC79A7; --bs-info-rgb: 204, 121, 167;
+  --bs-warning: #9E007C; --bs-warning-rgb: 158, 0, 124;
   --bs-danger: #D55E00; --bs-danger-rgb: 213, 94, 0;
-  --bs-link-color: #0072B2; --bs-link-color-rgb: 0, 114, 178;
-  --bs-link-hover-color: #005A8C; --bs-link-hover-color-rgb: 0, 90, 140;
-  --bs-primary-text-emphasis: #8A5E00; --bs-primary-bg-subtle: #FCEFCF; --bs-primary-border-subtle: #F6D98A;
+  --bs-link-color: #006BA8; --bs-link-color-rgb: 0, 107, 168;
+  --bs-link-hover-color: #004F7C; --bs-link-hover-color-rgb: 0, 79, 124;
+  --bs-primary-text-emphasis: #006BA8; --bs-primary-bg-subtle: #C7E0EE; --bs-primary-border-subtle: #C2DDED;
 }
 [data-mpa-theme="contrast"] {
-  --bs-primary: #FFB000; --bs-primary-rgb: 255, 176, 0; --mpa-on-primary: #000000;
-  --bs-secondary: #C8C8C8; --bs-secondary-rgb: 200, 200, 200;
-  --bs-success: #00E676; --bs-success-rgb: 0, 230, 118;
-  --bs-info: #4DD2FF; --bs-info-rgb: 77, 210, 255;
-  --bs-warning: #FFE100; --bs-warning-rgb: 255, 225, 0;
-  --bs-danger: #FF5252; --bs-danger-rgb: 255, 82, 82;
-  --bs-link-color: #4DD2FF; --bs-link-color-rgb: 77, 210, 255;
-  --bs-link-hover-color: #9BE7FF; --bs-link-hover-color-rgb: 155, 231, 255;
-  --bs-primary-text-emphasis: #FFD27F; --bs-primary-bg-subtle: #3A2A00; --bs-primary-border-subtle: #66520A;
+  --bs-primary: #7ED9EC; --bs-primary-rgb: 126, 217, 236; --mpa-on-primary: #000000;
+  --bs-secondary: #B8CEE0; --bs-secondary-rgb: 184, 206, 224;
+  --bs-success: #9AEBAA; --bs-success-rgb: 154, 235, 170;
+  --bs-info: #8CE4FF; --bs-info-rgb: 140, 228, 255;
+  --bs-warning: #FBE082; --bs-warning-rgb: 251, 224, 130;
+  --bs-danger: #FF9690; --bs-danger-rgb: 255, 150, 144;
+  --bs-link-color: #7ED9EC; --bs-link-color-rgb: 126, 217, 236;
+  --bs-link-hover-color: #B5EDF7; --bs-link-hover-color-rgb: 181, 237, 247;
+  --bs-primary-text-emphasis: #7ED9EC; --bs-primary-bg-subtle: #003640; --bs-primary-border-subtle: #015A6B;
   /* High-contrast surfaces: pure black on white text with white borders */
   --bs-body-bg: #000000; --bs-body-bg-rgb: 0, 0, 0;
   --bs-body-color: #FFFFFF; --bs-body-color-rgb: 255, 255, 255;
@@ -117,20 +128,23 @@
   --bs-btn-focus-shadow-rgb: var(--bs-primary-rgb);
 }
 
-/* Warm dark theme: cream text inputs + dropdowns (Darkly hardcodes them white) */
+/* Charcoal dark theme: dark inputs + dropdowns (Darkly hardcodes them white) */
 [data-mpa-theme="dark"] .form-control,
-[data-mpa-theme="dark"] .form-control:focus { background-color: #FFEEDC; }
+[data-mpa-theme="dark"] .form-control:focus,
+[data-mpa-theme="dark"] .form-select { background-color: #1E2B30; color: #DFE1E0; border-color: #26373E; }
 [data-mpa-theme="dark"] .dropdown-menu {
-  --bs-dropdown-bg: #FFEEDC;
-  --bs-dropdown-link-color: #3A2210;
-  --bs-dropdown-link-hover-color: #3A2210;
-  --bs-dropdown-link-hover-bg: #FFD9B3;
-  --bs-dropdown-link-active-color: #3A2210;
-  --bs-dropdown-link-active-bg: #FFD9B3;
-  --bs-dropdown-divider-bg: #E4C9A8;
+  --bs-dropdown-bg: #182429;
+  --bs-dropdown-color: #DFE1E0;
+  --bs-dropdown-border-color: #26373E;
+  --bs-dropdown-link-color: #DFE1E0;
+  --bs-dropdown-link-hover-color: #FFFFFF;
+  --bs-dropdown-link-hover-bg: #233238;
+  --bs-dropdown-link-active-color: #000000;
+  --bs-dropdown-link-active-bg: #4BA3B5;
+  --bs-dropdown-divider-bg: #26373E;
 }
 
-/* High-contrast theme: black surfaces, white borders, amber accents */
+/* High-contrast theme: black surfaces, white borders, cyan accents */
 [data-mpa-theme="contrast"] .card { --bs-card-bg: #000; --bs-card-cap-bg: #000; --bs-card-color: #fff; --bs-card-border-color: #fff; }
 [data-mpa-theme="contrast"] .form-control,
 [data-mpa-theme="contrast"] .form-select { background-color: #000; color: #fff; border-color: #fff; }
@@ -138,8 +152,8 @@
 [data-mpa-theme="contrast"] .dropdown-menu {
   --bs-dropdown-bg: #000; --bs-dropdown-color: #fff; --bs-dropdown-border-color: #fff;
   --bs-dropdown-link-color: #fff;
-  --bs-dropdown-link-hover-bg: #FFE100; --bs-dropdown-link-hover-color: #000;
-  --bs-dropdown-link-active-bg: #FFE100; --bs-dropdown-link-active-color: #000;
+  --bs-dropdown-link-hover-bg: #7ED9EC; --bs-dropdown-link-hover-color: #000;
+  --bs-dropdown-link-active-bg: #7ED9EC; --bs-dropdown-link-active-color: #000;
   --bs-dropdown-divider-bg: #fff;
 }
 
@@ -160,14 +174,14 @@
 
 /* ---- Segmented theme selector ------------------------------------------------
    Collapsed: single pill showing the active theme. Expanded: all options inline.
-   Design mirrors frontend/theme/mango-color-palette.html .theme-select.
+   Design mirrors oceanside-silver.html .theme-select.
    ---------------------------------------------------------------------------- */
 .mpa-theme-select {
   display: inline-flex;
   gap: 4px;
   flex-shrink: 0;
-  background: #FFFFFF;
-  border: 1px solid rgba(122,59,30,0.18);
+  background: #D8E0E0;
+  border: 1px solid #BEC9C9;
   border-radius: 999px;
   padding: 3px;
 }
@@ -176,48 +190,48 @@
   background: transparent; border: none; border-radius: 999px;
   padding: 5px 11px; font-family: inherit; font-size: 12.5px; font-weight: 600;
   cursor: pointer; transition: background .15s ease, color .15s ease;
-  color: #7A3B1E; white-space: nowrap; line-height: 1.4;
+  color: #142024; white-space: nowrap; line-height: 1.4;
 }
 .mpa-theme-opt svg { width: 14px; height: 14px; flex-shrink: 0; }
-.mpa-theme-opt:hover { background: #FFF4E6; }
-.mpa-theme-opt.active { background: var(--mango-orange); color: #3A2210; }
+.mpa-theme-opt:hover { background: #CCD7D7; }
+.mpa-theme-opt.active { background: #015A6B; color: #FFFFFF; }
 
-[data-mpa-theme="dark"] .mpa-theme-select { background: #2A1F15; border-color: rgba(255,233,194,0.20); }
-[data-mpa-theme="dark"] .mpa-theme-opt { color: var(--mango-cream); }
-[data-mpa-theme="dark"] .mpa-theme-opt:hover { background: #38291B; }
-[data-mpa-theme="dark"] .mpa-theme-opt.active { background: var(--mango-orange); color: #3A2210; }
+[data-mpa-theme="dark"] .mpa-theme-select { background: #1B272C; border-color: #2D3D44; }
+[data-mpa-theme="dark"] .mpa-theme-opt { color: #DFE1E0; }
+[data-mpa-theme="dark"] .mpa-theme-opt:hover { background: #233238; }
+[data-mpa-theme="dark"] .mpa-theme-opt.active { background: #4BA3B5; color: #000000; }
 
-[data-mpa-theme="colorblind"] .mpa-theme-select { background: #FFFFFF; border-color: #C9D2DA; }
+[data-mpa-theme="colorblind"] .mpa-theme-select { background: #EEEFF1; border-color: #D0D3D6; }
 [data-mpa-theme="colorblind"] .mpa-theme-opt { color: #15202B; }
-[data-mpa-theme="colorblind"] .mpa-theme-opt:hover { background: #E7EDF2; }
+[data-mpa-theme="colorblind"] .mpa-theme-opt:hover { background: #E2E4E6; }
 [data-mpa-theme="colorblind"] .mpa-theme-opt.active { background: #0072B2; color: #FFFFFF; }
 
-[data-mpa-theme="contrast"] .mpa-theme-select { background: #000; border: 2px solid #FFFFFF; }
+[data-mpa-theme="contrast"] .mpa-theme-select { background: #000; border: 2px solid #8C8C8C; }
 [data-mpa-theme="contrast"] .mpa-theme-opt { color: #FFFFFF; }
-[data-mpa-theme="contrast"] .mpa-theme-opt:hover { background: #222; }
-[data-mpa-theme="contrast"] .mpa-theme-opt.active { background: #FFE100; color: #000000; }
+[data-mpa-theme="contrast"] .mpa-theme-opt:hover { background: #1A1A1A; }
+[data-mpa-theme="contrast"] .mpa-theme-opt.active { background: #7ED9EC; color: #000000; }
 
-/* Navbar — warm cream base, mango gradient accent. Per-theme variants below. */
+/* Navbar — Rock Candy / Silver base with Oceanside teal accent. Per-theme variants below. */
 .mango-navbar {
-  background: linear-gradient(135deg, #FFF9F1, #FFEEDC);
+  background: linear-gradient(135deg, #F4F6F6, #DFE1E0);
   border-bottom: 2px solid transparent;
-  border-image: linear-gradient(90deg, var(--mango-gold), var(--mango-orange), var(--mango-ember)) 1;
-  --bs-navbar-color: #7A3B1E;
-  --bs-navbar-brand-color: #7A3B1E;
-  --bs-navbar-hover-color: #3A2210;
-  --bs-navbar-active-color: #3A2210;
+  border-image: linear-gradient(90deg, #015A6B, #436585, #DFE1E0) 1;
+  --bs-navbar-color: #142024;
+  --bs-navbar-brand-color: #015A6B;
+  --bs-navbar-hover-color: #01414D;
+  --bs-navbar-active-color: #01414D;
 }
 [data-mpa-theme="dark"] .mango-navbar {
-  background: linear-gradient(90deg, #241A11, #34271A);
-  border-image: linear-gradient(90deg, var(--mango-gold), var(--mango-orange), var(--mango-ember)) 1;
-  --bs-navbar-color: #FFEEDC;
-  --bs-navbar-brand-color: #FFEEDC;
+  background: linear-gradient(90deg, #0F171A, #182429);
+  border-image: linear-gradient(90deg, #0F171A, #015A6B, #4BA3B5) 1;
+  --bs-navbar-color: #DFE1E0;
+  --bs-navbar-brand-color: #DFE1E0;
   --bs-navbar-hover-color: #fff;
   --bs-navbar-active-color: #fff;
 }
 [data-mpa-theme="colorblind"] .mango-navbar {
   background: #FFFFFF;
-  border-image: linear-gradient(90deg, #E69F00, #56B4E9, #009E73) 1;
+  border-image: linear-gradient(90deg, #0072B2, #209CE2, #00419E) 1;
   --bs-navbar-color: #15202B;
   --bs-navbar-brand-color: #15202B;
   --bs-navbar-hover-color: #000;
@@ -225,11 +239,11 @@
 }
 [data-mpa-theme="contrast"] .mango-navbar {
   background: #000;
-  border-image: linear-gradient(90deg, #FFE100, #FFB000, #FF5252) 1;
+  border-image: linear-gradient(90deg, #7ED9EC, #9AEBAA, #FF9690) 1;
   --bs-navbar-color: #fff;
   --bs-navbar-brand-color: #fff;
-  --bs-navbar-hover-color: #FFE100;
-  --bs-navbar-active-color: #FFE100;
+  --bs-navbar-hover-color: #7ED9EC;
+  --bs-navbar-active-color: #7ED9EC;
 }
 
 
@@ -266,4 +280,42 @@
   word-break: break-word;
   max-height: 20rem;
   overflow-y: auto;
+}
+
+/* Pagination */
+.page-link {
+  color: var(--bs-link-color);
+  background-color: transparent;
+  border-color: var(--bs-border-color);
+}
+.page-link:hover {
+  color: var(--bs-link-hover-color);
+  background-color: var(--bs-secondary-bg);
+  border-color: var(--bs-border-color);
+}
+.page-item.active .page-link {
+  color: var(--mpa-on-primary);
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+}
+.page-item.disabled .page-link {
+  color: var(--bs-secondary-color);
+  background-color: transparent;
+  border-color: var(--bs-border-color);
+  opacity: 0.5;
+}
+[data-mpa-theme="contrast"] .page-link {
+  background-color: #000;
+  border-color: #fff;
+  color: #fff;
+}
+[data-mpa-theme="contrast"] .page-item.active .page-link {
+  background-color: #7ED9EC;
+  border-color: #7ED9EC;
+  color: #000;
+}
+[data-mpa-theme="contrast"] .page-item.disabled .page-link {
+  background-color: #000;
+  border-color: #666;
+  color: #666;
 }

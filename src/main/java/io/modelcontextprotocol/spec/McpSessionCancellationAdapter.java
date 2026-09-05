@@ -14,12 +14,19 @@ import reactor.core.publisher.Mono;
  */
 public final class McpSessionCancellationAdapter {
 
+    /** JSON-RPC method name for MCP cancellation notifications. */
     public static final String METHOD_NOTIFICATION_CANCELLED = "notifications/cancelled";
     private static final Logger log = LoggerFactory.getLogger(McpSessionCancellationAdapter.class);
 
     private McpSessionCancellationAdapter() {
     }
 
+    /**
+     * Reflectively accesses the session factory on the transport provider and attaches cancellation support.
+     *
+     * @param transport streamable HTTP transport provider
+     * @param queryLog  query log service for routing cancellations
+     */
     public static void enableCancellationSupport(
             HttpServletStreamableServerTransportProvider transport,
             QueryLogService queryLog) {
@@ -35,6 +42,13 @@ public final class McpSessionCancellationAdapter {
         }
     }
 
+    /**
+     * Registers the {@code notifications/cancelled} handler on a session factory instance.
+     *
+     * @param factory  server session factory
+     * @param queryLog query log service
+     * @return the configured session factory
+     */
     public static McpStreamableServerSession.Factory withCancellationSupport(
             McpStreamableServerSession.Factory factory,
             QueryLogService queryLog) {

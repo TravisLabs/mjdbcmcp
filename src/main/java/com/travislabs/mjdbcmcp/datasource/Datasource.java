@@ -66,10 +66,22 @@ public record Datasource(
         }
     }
 
+    /**
+     * Checks if this Datasource has been granted the specified Capability.
+     *
+     * @param capability the Capability to check
+     * @return true if granted, false otherwise
+     */
     public boolean has(Capability capability) {
         return capabilities.contains(capability);
     }
 
+    /**
+     * Checks if a specific tool is explicitly disabled on this Datasource.
+     *
+     * @param toolName name of the tool to check
+     * @return true if disabled, false otherwise
+     */
     public boolean isToolDisabled(String toolName) {
         if (toolName == null || disabledTools.isEmpty()) {
             return false;
@@ -77,6 +89,12 @@ public record Datasource(
         return disabledTools.contains(toolName.trim().toLowerCase(Locale.ROOT));
     }
 
+    /**
+     * Checks if a specific tool is enabled on this Datasource.
+     *
+     * @param toolName name of the tool to check
+     * @return true if enabled, false otherwise
+     */
     public boolean isToolEnabled(String toolName) {
         return !isToolDisabled(toolName);
     }
@@ -84,15 +102,28 @@ public record Datasource(
     /**
      * True when no granted Capability writes. This is what puts the Connection into read-only mode
      * once at connect time rather than per call (ADR-0001).
+     *
+     * @return true if only read capabilities are present
      */
     public boolean isReadOnly() {
         return capabilities.stream().noneMatch(Capability::isWrite);
     }
 
+    /**
+     * Determines whether this Datasource has any write-capable Capability (DML, DDL_CREATE, DDL_ALTER, DDL_DROP).
+     *
+     * @return true if any write Capability is granted, false if read-only
+     */
     public boolean hasAnyWriteCapability() {
         return !isReadOnly();
     }
 
+    /**
+     * Returns a copy of this Datasource with an updated plaintext password.
+     *
+     * @param newPassword the new plaintext password
+     * @return a new Datasource instance with the updated password
+     */
     public Datasource withPassword(String newPassword) {
         return new Datasource(id, name, description, jdbcUrl, driverClass, username, newPassword,
                 capabilities, allowlist, disabledTools, enabled, defaultSchema, maxRows,
@@ -100,6 +131,12 @@ public record Datasource(
                 connectionTimeoutMs, idleTimeoutMs, maxLifetimeMs, validationQuery);
     }
 
+    /**
+     * Returns a copy of this Datasource with an assigned primary key ID.
+     *
+     * @param newId the primary key ID
+     * @return a new Datasource instance with the assigned ID
+     */
     public Datasource withId(Long newId) {
         return new Datasource(newId, name, description, jdbcUrl, driverClass, username, password,
                 capabilities, allowlist, disabledTools, enabled, defaultSchema, maxRows,

@@ -32,13 +32,23 @@ public class DriverRegistry {
 
     private static final Logger log = LoggerFactory.getLogger(DriverRegistry.class);
 
+    /** Application configuration properties. */
     private final AppProperties props;
+    /** Names of driver classes loaded from the drop-in drivers directory. */
     private final List<String> externalDrivers = new ArrayList<>();
 
+    /**
+     * Constructs a DriverRegistry with the given application properties.
+     *
+     * @param props application properties providing directory paths
+     */
     public DriverRegistry(AppProperties props) {
         this.props = props;
     }
 
+    /**
+     * Scans the drop-in drivers directory for JAR files and registers discovered JDBC drivers.
+     */
     @PostConstruct
     void loadExternalDrivers() {
         Path dir = props.driversDir();

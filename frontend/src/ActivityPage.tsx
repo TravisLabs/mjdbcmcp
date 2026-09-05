@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  Alert, Badge, Card, CardBody, CardHeader, Col, Input, Row, Table,
+  Alert, Badge, Card, CardBody, CardFooter, CardHeader, Col, Input, Pagination,
+  PaginationItem, PaginationLink, Row, Table,
 } from 'reactstrap'
 import {
   api, duration, type QueryExecution, type RunningResponse, type StatsResponse, type Summary,
@@ -15,6 +16,19 @@ const WINDOWS = [
 
 const outcomeColour = (outcome: QueryExecution['outcome']) =>
   outcome === 'OK' ? 'success' : outcome === 'REFUSED' ? 'warning' : outcome === 'CANCELLED' ? 'secondary' : 'danger'
+
+function getPaginationRange(current: number, total: number): (number | '...')[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1)
+  }
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, '...', total]
+  }
+  if (current >= total - 3) {
+    return [1, '...', total - 4, total - 3, total - 2, total - 1, total]
+  }
+  return [1, '...', current - 1, current, current + 1, '...', total]
+}
 
 /** Expandable SQL component for activity tables. Shows single-line preview with click-to-expand code block. */
 function Sql({ sql }: { sql: string | null }) {
@@ -91,11 +105,17 @@ export default function ActivityPage() {
   const [stats, setStats] = useState<StatsResponse | null>(null)
   const [recent, setRecent] = useState<QueryExecution[]>([])
   const [windowMinutes, setWindowMinutes] = useState(60)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
   const [error, setError] = useState<string | null>(null)
   // Ticks the clock so elapsed times count up between polls rather than freezing.
   const [, setTick] = useState(0)
   const windowRef = useRef(windowMinutes)
   windowRef.current = windowMinutes
+  const pageRef = useRef(page)
+  pageRef.current = page
+  const pageSizeRef = useRef(pageSize)
+  pageSizeRef.current = pageSize
 
   const pollRunning = useCallback(async () => {
     try {
@@ -108,9 +128,14 @@ export default function ActivityPage() {
 
   const pollStats = useCallback(async () => {
     try {
+      const currentWindow = windowRef.current
+      const currentPage = pageRef.current
+      const currentPageSize = pageSizeRef.current
+      const offset = Math.max(0, (currentPage - 1) * currentPageSize)
+
       const [s, r] = await Promise.all([
-        api.stats(windowRef.current),
-        api.recent(windowRef.current, 50),
+        api.stats(currentWindow),
+        api.recent(currentWindow, currentPageSize, offset),
       ])
       setStats(s)
       setRecent(r)
@@ -136,7 +161,29 @@ export default function ActivityPage() {
 
   useEffect(() => {
     void pollStats()
-  }, [windowMinutes, pollStats])
+  }, [windowMinutes, page, pageSize, pollStats])
+
+  const totalCalls = stats?.stats.overall.calls ?? 0
+  const totalPages = Math.max(1, Math.ceil(totalCalls / pageSize))
+
+  useEffect(() => {
+    if (totalCalls > 0 && page > totalPages) {
+      setPage(totalPages)
+    }
+  }, [totalCalls, page, totalPages])
+
+  const onWindowChange = (mins: number) => {
+    setWindowMinutes(mins)
+    setPage(1)
+  }
+
+  const onPageSizeChange = (size: number) => {
+    setPageSize(size)
+    setPage(1)
+  }
+
+  const from = totalCalls === 0 ? 0 : (page - 1) * pageSize + 1
+  const to = Math.min(totalCalls, page * pageSize)
 
   const overall = stats?.stats.overall
   const errorRate = overall && overall.calls > 0
@@ -214,7 +261,7 @@ export default function ActivityPage() {
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h5 className="mb-0">Statistics</h5>
         <Input type="select" style={{ maxWidth: '14rem' }} value={windowMinutes}
-               onChange={(e) => setWindowMinutes(Number(e.target.value))}>
+               onChange={(e) => onWindowChange(Number(e.target.value))}>
           {WINDOWS.map((w) => <option key={w.value} value={w.value}>{w.label}</option>)}
         </Input>
       </div>
@@ -368,7 +415,27 @@ export default function ActivityPage() {
       </Card>
 
       <Card className="mb-4">
-        <CardHeader>Recent calls</CardHeader>
+        <CardHeader className="d-flex justify-content-between align-items-center">
+          <div className="d-flex align-items-center gap-2">
+            <span>Recent calls</span>
+            {totalCalls > 0 && <Badge color="secondary">{totalCalls}</Badge>}
+          </div>
+          <div className="d-flex align-items-center gap-2 small text-body-secondary">
+            <span>Rows per page:</span>
+            <Input
+              type="select"
+              bsSize="sm"
+              style={{ width: 'auto' }}
+              value={pageSize}
+              onChange={(e) => onPageSizeChange(Number(e.target.value))}
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </Input>
+          </div>
+        </CardHeader>
         <CardBody className="p-0">
           <Table responsive hover size="sm" className="mb-0 align-middle">
             <thead>
@@ -407,6 +474,42 @@ export default function ActivityPage() {
             </tbody>
           </Table>
         </CardBody>
+        {totalCalls > 0 && (
+          <CardFooter className="d-flex flex-wrap justify-content-between align-items-center gap-2 py-2">
+            <div className="small text-body-secondary">
+              Showing {from}–{to} of {totalCalls} call{totalCalls === 1 ? '' : 's'}
+            </div>
+            {totalPages > 1 && (
+              <Pagination size="sm" className="mb-0" aria-label="Recent calls pagination">
+                <PaginationItem disabled={page <= 1}>
+                  <PaginationLink first href="#" onClick={(e) => { e.preventDefault(); setPage(1) }} />
+                </PaginationItem>
+                <PaginationItem disabled={page <= 1}>
+                  <PaginationLink previous href="#" onClick={(e) => { e.preventDefault(); setPage((p) => Math.max(1, p - 1)) }} />
+                </PaginationItem>
+                {getPaginationRange(page, totalPages).map((p, idx) =>
+                  p === '...' ? (
+                    <PaginationItem key={`ellipsis-${idx}`} disabled>
+                      <PaginationLink href="#" onClick={(e) => e.preventDefault()}>…</PaginationLink>
+                    </PaginationItem>
+                  ) : (
+                    <PaginationItem key={p} active={p === page}>
+                      <PaginationLink href="#" onClick={(e) => { e.preventDefault(); setPage(Number(p)) }}>
+                        {p}
+                      </PaginationLink>
+                    </PaginationItem>
+                  )
+                )}
+                <PaginationItem disabled={page >= totalPages}>
+                  <PaginationLink next href="#" onClick={(e) => { e.preventDefault(); setPage((p) => Math.min(totalPages, p + 1)) }} />
+                </PaginationItem>
+                <PaginationItem disabled={page >= totalPages}>
+                  <PaginationLink last href="#" onClick={(e) => { e.preventDefault(); setPage(totalPages) }} />
+                </PaginationItem>
+              </Pagination>
+            )}
+          </CardFooter>
+        )}
       </Card>
     </>
   )

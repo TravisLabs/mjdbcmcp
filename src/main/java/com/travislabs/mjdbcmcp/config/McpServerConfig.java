@@ -29,11 +29,23 @@ import tools.jackson.databind.json.JsonMapper;
 @EnableScheduling
 public class McpServerConfig {
 
+    /**
+     * Configures the Jackson-backed JSON mapper used by the MCP server transport.
+     *
+     * @return configured {@link McpJsonMapper}
+     */
     @Bean
     public McpJsonMapper mcpJsonMapper() {
         return new JacksonMcpJsonMapper(JsonMapper.builder().build());
     }
 
+    /**
+     * Creates and configures the streamable HTTP transport provider for the MCP server.
+     *
+     * @param json  the JSON mapper for serialization
+     * @param props application properties containing endpoint and security settings
+     * @return configured {@link HttpServletStreamableServerTransportProvider}
+     */
     @Bean
     public HttpServletStreamableServerTransportProvider mcpTransportProvider(McpJsonMapper json, AppProperties props) {
         var builder = HttpServletStreamableServerTransportProvider.builder()
@@ -56,6 +68,13 @@ public class McpServerConfig {
         return builder.build();
     }
 
+    /**
+     * Registers the MCP streamable transport provider as an asynchronous HTTP servlet.
+     *
+     * @param transport the MCP transport provider
+     * @param props     application properties containing the endpoint path
+     * @return a {@link ServletRegistrationBean} for the transport servlet
+     */
     @Bean
     public ServletRegistrationBean<HttpServletStreamableServerTransportProvider> mcpServlet(
             HttpServletStreamableServerTransportProvider transport, AppProperties props) {
@@ -68,6 +87,16 @@ public class McpServerConfig {
         return registration;
     }
 
+    /**
+     * Assembles and builds the synchronous MCP server instance with dynamic tools and instructions.
+     *
+     * @param transport the HTTP transport provider
+     * @param surface   the tool surface provider deriving exposed tools
+     * @param queryLog  the query log service for tracing executions and handling cancellations
+     * @param json      the JSON mapper
+     * @param props     application properties
+     * @return initialized {@link McpSyncServer}
+     */
     @Bean(destroyMethod = "closeGracefully")
     public McpSyncServer mcpSyncServer(HttpServletStreamableServerTransportProvider transport,
                                        ToolSurface surface,

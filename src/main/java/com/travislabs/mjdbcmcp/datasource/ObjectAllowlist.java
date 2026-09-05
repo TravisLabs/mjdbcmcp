@@ -24,16 +24,27 @@ import java.util.stream.Collectors;
  */
 public record ObjectAllowlist(List<Entry> entries) {
 
+    /** Constant singleton instance representing an unrestricted allowlist. */
     private static final ObjectAllowlist UNRESTRICTED = new ObjectAllowlist(List.of());
 
     public ObjectAllowlist {
         entries = List.copyOf(entries);
     }
 
+    /**
+     * Returns an unrestricted Object Allowlist instance permitting all tables and schemas.
+     *
+     * @return unrestricted allowlist
+     */
     public static ObjectAllowlist unrestricted() {
         return UNRESTRICTED;
     }
 
+    /**
+     * Checks if this allowlist imposes no restrictions on schemas or tables.
+     *
+     * @return true if unrestricted, false if scoped
+     */
     public boolean isUnrestricted() {
         return entries.isEmpty();
     }
@@ -75,6 +86,11 @@ public record ObjectAllowlist(List<Entry> entries) {
         return parsed.isEmpty() ? UNRESTRICTED : new ObjectAllowlist(parsed);
     }
 
+    /**
+     * Formats the allowlist entries into a newline-separated string.
+     *
+     * @return newline-separated allowlist entries
+     */
     public String format() {
         return entries.stream().map(Entry::format).collect(Collectors.joining("\n"));
     }
@@ -87,6 +103,12 @@ public record ObjectAllowlist(List<Entry> entries) {
      */
     public record Entry(String schema, boolean schemaQuoted, String table, boolean tableQuoted) {
 
+        /**
+         * Parses a single allowlist token into an Entry.
+         *
+         * @param token token string (e.g. {@code sales.orders}, {@code sales.*}, or {@code orders})
+         * @return parsed Entry instance
+         */
         static Entry parse(String token) {
             List<String> parts = splitQualified(token);
             if (parts.size() == 1) {
@@ -98,11 +120,24 @@ public record ObjectAllowlist(List<Entry> entries) {
             return new Entry(unquote(schema), isQuoted(schema), unquote(table), isQuoted(table));
         }
 
+        /**
+         * Checks whether this entry permits the given candidate schema.
+         *
+         * @param candidateSchema candidate schema name
+         * @return true if permitted
+         */
         boolean matchesSchema(String candidateSchema) {
             // An unqualified entry says nothing about schemas, so it cannot exclude one.
             return schema == null || equal(schema, schemaQuoted, candidateSchema);
         }
 
+        /**
+         * Checks whether this entry permits the given table in the candidate schema.
+         *
+         * @param candidateSchema candidate schema name
+         * @param candidateTable  candidate table name
+         * @return true if permitted
+         */
         boolean matchesTable(String candidateSchema, String candidateTable) {
             if (!matchesSchema(candidateSchema)) {
                 return false;
@@ -110,6 +145,11 @@ public record ObjectAllowlist(List<Entry> entries) {
             return "*".equals(table) || equal(table, tableQuoted, candidateTable);
         }
 
+        /**
+         * Formats this entry as a string.
+         *
+         * @return formatted entry string
+         */
         String format() {
             String t = tableQuoted ? '"' + table + '"' : table;
             if (schema == null) {

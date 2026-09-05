@@ -1,8 +1,8 @@
 <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFF9F1"/>
-      <stop offset="100%" stop-color="#FFEEDC"/>
+      <stop offset="0%" stop-color="#F4F6F6"/>
+      <stop offset="100%" stop-color="#DFE1E0"/>
     </linearGradient>
     <linearGradient id="mangoGrad" x1="20%" y1="0%" x2="85%" y2="100%">
       <stop offset="0%" stop-color="#FFD54A"/>
@@ -15,7 +15,7 @@
     </linearGradient>
   </defs>
 
-  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="110" fill="url(#bg)" stroke="#C8CECE" stroke-width="6"/>
 
   <g transform="translate(252,290) rotate(-8)">
     <!-- leaf -->
@@ -29,12 +29,12 @@
     <path d="M-85,-35 Q-75,-85 -10,-110" stroke="#FFFFFF" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.25"/>
 
     <!-- eyes -->
-    <circle cx="-32" cy="-10" r="10" fill="#7A3B1E"/>
-    <circle cx="28" cy="-10" r="10" fill="#7A3B1E"/>
-    <circle cx="-35" cy="-13" r="3" fill="#FFE9C2"/>
-    <circle cx="25" cy="-13" r="3" fill="#FFE9C2"/>
+    <circle cx="-32" cy="-10" r="10" fill="#142024"/>
+    <circle cx="28" cy="-10" r="10" fill="#142024"/>
+    <circle cx="-35" cy="-13" r="3" fill="#FFFFFF"/>
+    <circle cx="25" cy="-13" r="3" fill="#FFFFFF"/>
 
     <!-- smile -->
-    <path d="M-32,32 Q-2,62 34,28" stroke="#7A3B1E" stroke-width="9" fill="none" stroke-linecap="round"/>
+    <path d="M-32,32 Q-2,62 34,28" stroke="#142024" stroke-width="9" fill="none" stroke-linecap="round"/>
   </g>
 </svg>

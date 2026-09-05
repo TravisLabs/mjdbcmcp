@@ -17,13 +17,22 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Unit tests for {@link StatementRunner} verifying query execution, result encoding, script execution,
+ * and parameter binding against an in-memory SQLite database.
+ */
 class StatementRunnerTest {
 
+    /** Live JDBC connection to in-memory database. */
     private Connection connection;
+    /** SQL classifier instance. */
     private SqlClassifier classifier;
+    /** Statement runner under test. */
     private StatementRunner runner;
+    /** Test Datasource configuration. */
     private Datasource datasource;
 
+    /** Sets up in-memory SQLite schema and test fixtures before each test. */
     @BeforeEach
     void setUp() throws Exception {
         connection = DriverManager.getConnection("jdbc:sqlite::memory:");
@@ -39,6 +48,7 @@ class StatementRunnerTest {
                 2, 4096, 30, 2, 0, 30_000L, 600_000L, 1_800_000L, null);
     }
 
+    /** Closes the test database connection after each test. */
     @AfterEach
     void tearDown() throws Exception {
         if (connection != null && !connection.isClosed()) {
@@ -46,6 +56,7 @@ class StatementRunnerTest {
         }
     }
 
+    /** Verifies that queries hitting the row cap report rowCapReached and include truncation message. */
     @Test
     void queryReachesCapAndIncludesMessage() throws Exception {
         Map<String, Object> result = runner.query(connection, datasource, "SELECT * FROM items", null, 2);
@@ -55,6 +66,7 @@ class StatementRunnerTest {
         assertThat(result.get("message")).isEqualTo("Result set limit reached (capped at 2 rows).");
     }
 
+    /** Verifies that queries returning fewer rows than the cap do not include truncation message. */
     @Test
     void queryUnderCapDoesNotIncludeCapMessage() throws Exception {
         Map<String, Object> result = runner.query(connection, datasource, "SELECT * FROM items WHERE id = 1", null, 2);
@@ -64,6 +76,7 @@ class StatementRunnerTest {
         assertThat(result.get("message")).isNull();
     }
 
+    /** Verifies atomic execution and update counts across multi-statement transaction scripts. */
     @Test
     void executeScriptRunsAtomicTransactions() throws Exception {
         String script = """
@@ -86,6 +99,7 @@ class StatementRunnerTest {
         assertThat(stmts.get(2).get("updateCount")).isEqualTo(1);
     }
 
+    /** Verifies that a failure in any script statement rolls back earlier statements in the transaction. */
     @Test
     void executeScriptRollsBackEntirelyOnError() throws Exception {
         String script = """
@@ -104,6 +118,7 @@ class StatementRunnerTest {
         assertThat(check.get("rowCount")).isEqualTo(0);
     }
 
+    /** Verifies execution plan generation using SQLite dialect prefixing. */
     @Test
     void explainGeneratesQueryPlan() throws Exception {
         Map<String, Object> result = runner.explain(connection, datasource, "SELECT * FROM items WHERE id = 1", null, false);

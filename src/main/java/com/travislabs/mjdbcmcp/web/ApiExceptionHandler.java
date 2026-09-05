@@ -13,16 +13,34 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice(assignableTypes = AdminApi.class)
 public class ApiExceptionHandler {
 
+    /**
+     * Handles 404 Not Found errors for missing resources.
+     *
+     * @param e the exception
+     * @return 404 response entity
+     */
     @ExceptionHandler(NoSuchElementException.class)
     public ResponseEntity<Map<String, Object>> notFound(NoSuchElementException e) {
         return body(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
+    /**
+     * Handles 400 Bad Request errors for illegal arguments or states.
+     *
+     * @param e runtime exception
+     * @return 400 response entity
+     */
     @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
     public ResponseEntity<Map<String, Object>> badRequest(RuntimeException e) {
         return body(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 
+    /**
+     * Handles 400 Bad Request errors for bean validation failures.
+     *
+     * @param e validation exception
+     * @return 400 response entity with field error details
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> invalid(MethodArgumentNotValidException e) {
         String detail = e.getBindingResult().getFieldErrors().stream()

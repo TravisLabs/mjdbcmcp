@@ -17,10 +17,20 @@ public record AppProperties(Path configDir, Mcp mcp, QueryLog queryLog) {
         queryLog = queryLog == null ? QueryLog.defaults() : queryLog;
     }
 
+    /**
+     * Resolves the {@code drivers/} directory within the application configuration directory.
+     *
+     * @return path to the drop-in drivers directory
+     */
     public Path driversDir() {
         return configDir.resolve("drivers");
     }
 
+    /**
+     * Resolves the {@code secret.key} file within the application configuration directory.
+     *
+     * @return path to the encryption key file
+     */
     public Path secretKeyFile() {
         return configDir.resolve("secret.key");
     }

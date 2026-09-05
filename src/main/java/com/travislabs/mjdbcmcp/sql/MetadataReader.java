@@ -23,6 +23,13 @@ import org.springframework.stereotype.Component;
 @Component
 public class MetadataReader {
 
+    /**
+     * Reads database product, version, driver, and current catalog/schema information.
+     *
+     * @param conn active JDBC connection
+     * @return map of database metadata attributes
+     * @throws SQLException if a database error occurs
+     */
     public Map<String, Object> databaseInfo(Connection conn) throws SQLException {
         DatabaseMetaData md = conn.getMetaData();
         Map<String, Object> out = new LinkedHashMap<>();
@@ -37,6 +44,14 @@ public class MetadataReader {
         return out;
     }
 
+    /**
+     * Lists visible schemas filtered by the Datasource's Object Allowlist.
+     *
+     * @param conn active JDBC connection
+     * @param d    target Datasource
+     * @return list of schema metadata maps
+     * @throws SQLException if a database error occurs
+     */
     public List<Map<String, Object>> schemas(Connection conn, Datasource d) throws SQLException {
         try (ResultSet rs = conn.getMetaData().getSchemas()) {
             List<Map<String, Object>> out = new ArrayList<>();
@@ -54,6 +69,17 @@ public class MetadataReader {
         }
     }
 
+    /**
+     * Lists visible tables and views filtered by the Datasource's Object Allowlist and optional patterns.
+     *
+     * @param conn        active JDBC connection
+     * @param d           target Datasource
+     * @param schema      schema name, or null for default
+     * @param namePattern SQL LIKE table name pattern
+     * @param types       list of JDBC table types (e.g. TABLE, VIEW)
+     * @return list of table metadata maps
+     * @throws SQLException if a database error occurs
+     */
     public List<Map<String, Object>> tables(Connection conn, Datasource d, String schema,
                                             String namePattern, List<String> types) throws SQLException {
         String[] typeFilter = types == null || types.isEmpty()
@@ -80,6 +106,15 @@ public class MetadataReader {
         }
     }
 
+    /**
+     * Inspects column definitions, primary keys, foreign keys, and indexes for a single table.
+     *
+     * @param conn   active JDBC connection
+     * @param schema schema name
+     * @param table  table name
+     * @return structured map of table details
+     * @throws SQLException if a database error occurs
+     */
     public Map<String, Object> describeTable(Connection conn, String schema, String table) throws SQLException {
         DatabaseMetaData md = conn.getMetaData();
         Map<String, Object> out = new LinkedHashMap<>();

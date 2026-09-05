@@ -38,17 +38,34 @@ public class DatabaseTools {
 
     private static final Logger log = LoggerFactory.getLogger(DatabaseTools.class);
 
+    /** JSON schema property fragment defining the common "datasource" string argument. */
     private static final String DATASOURCE_ARG =
             "\"datasource\":{\"type\":\"string\",\"description\":\"Name of a configured datasource; "
                     + "list_datasources shows them with their capabilities\"}";
 
+    /** Datasource service for configuration lookups and permission validation. */
     private final DatasourceService datasources;
+    /** SQL classifier for determining required capabilities and referenced tables. */
     private final SqlClassifier classifier;
+    /** Statement runner for executing queries, scripts, and explanations. */
     private final StatementRunner runner;
+    /** Metadata reader for database and schema introspection. */
     private final MetadataReader metadata;
+    /** Query log service for tracking in-flight and completed executions. */
     private final QueryLogService queryLog;
+    /** Jackson JSON mapper for serializing tool responses. */
     private final McpJsonMapper json;
 
+    /**
+     * Constructs DatabaseTools with required services and JSON mapper.
+     *
+     * @param datasources datasource service
+     * @param classifier  SQL classifier
+     * @param runner      statement runner
+     * @param metadata    metadata reader
+     * @param queryLog    query log service
+     * @param json        MCP JSON mapper
+     */
     public DatabaseTools(DatasourceService datasources,
                          SqlClassifier classifier, StatementRunner runner, MetadataReader metadata,
                          QueryLogService queryLog, McpJsonMapper json) {
@@ -62,6 +79,11 @@ public class DatabaseTools {
 
     // ── Structured Tools: always present, they need no Capability beyond existing ──────────────
 
+    /**
+     * Creates the {@code list_datasources} tool specification.
+     *
+     * @return tool specification for listing configured Datasources
+     */
     public SyncToolSpecification listDatasources() {
         return tool("list_datasources",
                 "List the configured datasources, with the capabilities, enabled tools, and object scope of each. "
@@ -85,6 +107,11 @@ public class DatabaseTools {
                 });
     }
 
+    /**
+     * Creates the {@code database_info} tool specification.
+     *
+     * @return tool specification for reading database product and driver information
+     */
     public SyncToolSpecification databaseInfo() {
         return tool("database_info",
                 "Product, version and driver of the database behind a datasource.",
@@ -98,6 +125,11 @@ public class DatabaseTools {
                 });
     }
 
+    /**
+     * Creates the {@code list_schemas} tool specification.
+     *
+     * @return tool specification for listing visible schemas
+     */
     public SyncToolSpecification listSchemas() {
         return tool("list_schemas",
                 "List the schemas visible on a datasource, filtered to its configured object scope.",
@@ -111,6 +143,11 @@ public class DatabaseTools {
                 });
     }
 
+    /**
+     * Creates the {@code list_tables} tool specification.
+     *
+     * @return tool specification for listing tables and views
+     */
     public SyncToolSpecification listTables() {
         return tool("list_tables",
                 "List tables and views on a datasource, filtered to its configured object scope. "
@@ -131,6 +168,11 @@ public class DatabaseTools {
                 });
     }
 
+    /**
+     * Creates the {@code describe_table} tool specification.
+     *
+     * @return tool specification for inspecting table columns, keys, and indexes
+     */
     public SyncToolSpecification describeTable() {
         return tool("describe_table",
                 "Columns, primary key, foreign keys and indexes for one table.",
@@ -152,6 +194,11 @@ public class DatabaseTools {
 
     // ── Structured read: builds its own SELECT, so it never goes through Classification ────────
 
+    /**
+     * Creates the Structured {@code query} tool specification for reading rows via typed parameters.
+     *
+     * @return tool specification for structured SELECT queries
+     */
     public SyncToolSpecification query() {
         return tool("query",
                 "Read rows from one table with typed filters — no SQL text. Rows come back as arrays "
@@ -189,6 +236,11 @@ public class DatabaseTools {
 
     // ── Raw SQL Reads ──────────────────────────────────────────────────────────────────────────
 
+    /**
+     * Creates the {@code raw_query} tool specification for executing single read-only SQL statements.
+     *
+     * @return tool specification for raw read queries
+     */
     public SyncToolSpecification rawQuery() {
         return tool("raw_query",
                 "Run one read-only SQL statement. Rows come back capped by the datasource's row limit. "
@@ -206,12 +258,12 @@ public class DatabaseTools {
                     Classification classification = classifier.classify(sql);
                     if (classification.capability() != Capability.SELECT) {
                         throw new Refusal(Refusal.Kind.CAPABILITY, "raw_query runs reads only, and this "
-                                + (classification.modifyingCte()
-                                        ? "statement performs a " + classification.verb() + " inside its WITH "
-                                                + "clause, which is why it is not a read despite starting with SELECT"
-                                        : "is a " + classification.verb())
-                                + ". It requires the " + classification.capability().wireName()
-                                + " capability; use raw_execute on a datasource configured for it.");
+                                 + (classification.modifyingCte()
+                                         ? "statement performs a " + classification.verb() + " inside its WITH "
+                                                 + "clause, which is why it is not a read despite starting with SELECT"
+                                         : "is a " + classification.verb())
+                                 + ". It requires the " + classification.capability().wireName()
+                                 + " capability; use raw_execute on a datasource configured for it.");
                     }
                     datasources.requireCapability(d, Capability.SELECT, "queries");
                     datasources.requireAllowlisted(d, classification);
@@ -221,6 +273,11 @@ public class DatabaseTools {
                 });
     }
 
+    /**
+     * Creates the {@code explain_query} tool specification for retrieving execution plans.
+     *
+     * @return tool specification for query plan explanation
+     */
     public SyncToolSpecification explainQuery() {
         return tool("explain_query",
                 "Explain the execution plan for a read-only query as structured JSON. "
@@ -245,6 +302,11 @@ public class DatabaseTools {
 
     // ── Raw SQL Writes & Scripts ───────────────────────────────────────────────────────────────
 
+    /**
+     * Creates the {@code raw_execute} tool specification for write operations and multi-statement scripts.
+     *
+     * @return tool specification for write executions
+     */
     public SyncToolSpecification rawExecute() {
         return tool("raw_execute",
                 "Run one SQL statement or an atomic multi-statement script that changes data or schema. "
@@ -299,6 +361,9 @@ public class DatabaseTools {
 
     // ── Plumbing ──────────────────────────────────────────────────────────────────────────────
 
+    /**
+     * Internal tool invocation reply holding the target Datasource and raw payload map before rendering and logging.
+     */
     private record Reply(Datasource datasource, Map<String, Object> payload) {
     }
 
@@ -306,6 +371,9 @@ public class DatabaseTools {
         return new Reply(datasource, payload);
     }
 
+    /**
+     * Internal functional interface representing a tool call handler that returns a {@link Reply}.
+     */
     @FunctionalInterface
     private interface Handler {
         Reply handle(McpSyncServerExchange exchange, CallToolRequest request) throws Exception;
@@ -397,6 +465,12 @@ public class DatabaseTools {
         return value instanceof List<?> list ? new ArrayList<>(list) : null;
     }
 
+    /**
+     * Redacts password parameters from JDBC URL strings for safe display.
+     *
+     * @param jdbcUrl raw JDBC URL
+     * @return sanitized JDBC URL
+     */
     static String redact(String jdbcUrl) {
         return jdbcUrl == null ? null : jdbcUrl.replaceAll("(?i)(password|pwd)=([^&;]*)", "$1=***");
     }

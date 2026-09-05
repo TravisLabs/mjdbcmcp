@@ -29,14 +29,33 @@ public class StatementRunner {
 
     private static final Logger log = LoggerFactory.getLogger(StatementRunner.class);
 
+    /** Result encoder for formatting result sets. */
     private final ResultEncoder encoder;
+    /** SQL classifier for statement verb identification. */
     private final SqlClassifier classifier;
 
+    /**
+     * Constructs a StatementRunner with encoder and classifier.
+     *
+     * @param encoder    result encoder
+     * @param classifier SQL classifier
+     */
     public StatementRunner(ResultEncoder encoder, SqlClassifier classifier) {
         this.encoder = encoder;
         this.classifier = classifier;
     }
 
+    /**
+     * Executes a read-only query on the connection and encodes the result set.
+     *
+     * @param connection       active JDBC connection
+     * @param d                target Datasource
+     * @param sql              SQL statement
+     * @param params           bound parameters
+     * @param requestedMaxRows requested row cap override
+     * @return encoded result map
+     * @throws SQLException if a database error occurs
+     */
     public Map<String, Object> query(Connection connection, Datasource d, String sql,
                                      List<Object> params, Integer requestedMaxRows) throws SQLException {
         int limit = requestedMaxRows == null || requestedMaxRows <= 0

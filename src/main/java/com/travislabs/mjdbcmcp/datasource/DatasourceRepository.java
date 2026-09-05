@@ -18,6 +18,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class DatasourceRepository {
 
+    /** Comma-separated list of database columns in the datasource table. */
     private static final String COLUMNS = """
             id, name, description, jdbc_url, driver_class, username, password_enc, capabilities,
             object_allowlist, disabled_tools, enabled, default_schema, max_rows, max_cell_chars,
@@ -25,20 +26,39 @@ public class DatasourceRepository {
             max_lifetime_ms, validation_query
             """;
 
+    /** Spring JDBC client for database access. */
     private final JdbcClient jdbc;
+    /** Cipher for encrypting and decrypting stored passwords. */
     private final SecretCipher cipher;
 
+    /**
+     * Constructs a DatasourceRepository with the given JDBC client and secret cipher.
+     *
+     * @param jdbc   JDBC client
+     * @param cipher cipher for password encryption
+     */
     public DatasourceRepository(JdbcClient jdbc, SecretCipher cipher) {
         this.jdbc = jdbc;
         this.cipher = cipher;
     }
 
+    /**
+     * Retrieves all configured Datasources ordered by name.
+     *
+     * @return list of all Datasource records
+     */
     public List<Datasource> findAll() {
         return jdbc.sql("SELECT " + COLUMNS + " FROM datasource ORDER BY name")
                 .query(this::map)
                 .list();
     }
 
+    /**
+     * Finds a Datasource by its unique name.
+     *
+     * @param name datasource name
+     * @return optional containing the Datasource if found
+     */
     public Optional<Datasource> findByName(String name) {
         return jdbc.sql("SELECT " + COLUMNS + " FROM datasource WHERE name = ?")
                 .param(name)
@@ -46,6 +66,12 @@ public class DatasourceRepository {
                 .optional();
     }
 
+    /**
+     * Finds a Datasource by its primary key ID.
+     *
+     * @param id datasource primary key
+     * @return optional containing the Datasource if found
+     */
     public Optional<Datasource> findById(long id) {
         return jdbc.sql("SELECT " + COLUMNS + " FROM datasource WHERE id = ?")
                 .param(id)
@@ -53,6 +79,12 @@ public class DatasourceRepository {
                 .optional();
     }
 
+    /**
+     * Inserts a new Datasource into the SQLite database.
+     *
+     * @param d Datasource to insert
+     * @return persisted Datasource with generated ID
+     */
     public Datasource insert(Datasource d) {
         var keys = new GeneratedKeyHolder();
         jdbc.sql("""
@@ -68,6 +100,12 @@ public class DatasourceRepository {
         return d.withId(keys.getKey() == null ? null : keys.getKey().longValue());
     }
 
+    /**
+     * Updates an existing Datasource record.
+     *
+     * @param id primary key ID
+     * @param d  updated Datasource entity
+     */
     public void update(long id, Datasource d) {
         List<Object> params = new ArrayList<>(writeParams(d));
         params.add(id);
@@ -85,10 +123,21 @@ public class DatasourceRepository {
                 .update();
     }
 
+    /**
+     * Deletes a Datasource record by ID.
+     *
+     * @param id primary key ID to delete
+     */
     public void delete(long id) {
         jdbc.sql("DELETE FROM datasource WHERE id = ?").param(id).update();
     }
 
+    /**
+     * Converts a Datasource record into positional parameters for insert or update SQL.
+     *
+     * @param d Datasource instance
+     * @return list of parameter values
+     */
     private List<Object> writeParams(Datasource d) {
         return Arrays.asList(
                 d.name(), d.description(), d.jdbcUrl(), d.driverClass(), d.username(),
@@ -99,6 +148,14 @@ public class DatasourceRepository {
                 d.idleTimeoutMs(), d.maxLifetimeMs(), d.validationQuery());
     }
 
+    /**
+     * Maps a database row to a {@link Datasource} instance.
+     *
+     * @param rs     result set
+     * @param rowNum row number
+     * @return mapped Datasource instance
+     * @throws SQLException if a database error occurs
+     */
     private Datasource map(ResultSet rs, int rowNum) throws SQLException {
         return new Datasource(
                 rs.getLong("id"),
@@ -124,6 +181,12 @@ public class DatasourceRepository {
                 rs.getString("validation_query"));
     }
 
+    /**
+     * Formats a set of disabled tool names into a sorted comma-separated string.
+     *
+     * @param tools set of tool names
+     * @return comma-separated string or null if empty
+     */
     private static String formatTools(Set<String> tools) {
         if (tools == null || tools.isEmpty()) {
             return null;
@@ -131,6 +194,12 @@ public class DatasourceRepository {
         return String.join(",", tools.stream().sorted().toList());
     }
 
+    /**
+     * Parses a comma-separated string of disabled tool names into a lowercase set.
+     *
+     * @param raw comma-separated tool names
+     * @return set of tool names
+     */
     private static Set<String> parseTools(String raw) {
         if (raw == null || raw.isBlank()) {
             return Set.of();

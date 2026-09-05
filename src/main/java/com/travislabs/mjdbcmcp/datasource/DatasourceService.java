@@ -20,22 +20,46 @@ import org.springframework.stereotype.Service;
 @Service
 public class DatasourceService {
 
+    /** Repository for accessing persisted Datasource records. */
     private final DatasourceRepository repository;
+    /** Registry managing live HikariCP connection pools. */
     private final PoolRegistry pools;
 
+    /**
+     * Constructs a DatasourceService with the given repository and pool registry.
+     *
+     * @param repository datasource repository
+     * @param pools      connection pool registry
+     */
     public DatasourceService(DatasourceRepository repository, PoolRegistry pools) {
         this.repository = repository;
         this.pools = pools;
     }
 
+    /**
+     * Retrieves all configured Datasources.
+     *
+     * @return list of all Datasources
+     */
     public List<Datasource> findAll() {
         return repository.findAll();
     }
 
+    /**
+     * Retrieves all enabled Datasources.
+     *
+     * @return list of enabled Datasources
+     */
     public List<Datasource> findEnabled() {
         return repository.findAll().stream().filter(Datasource::enabled).toList();
     }
 
+    /**
+     * Finds a Datasource by its primary key ID.
+     *
+     * @param id datasource primary key
+     * @return optional containing the Datasource if found
+     */
     public Optional<Datasource> findById(long id) {
         return repository.findById(id);
     }
@@ -47,6 +71,13 @@ public class DatasourceService {
                 .collect(Collectors.toCollection(() -> java.util.EnumSet.noneOf(Capability.class)));
     }
 
+    /**
+     * Finds a Datasource by name and asserts that it exists and is enabled.
+     *
+     * @param name datasource name
+     * @return the enabled Datasource
+     * @throws Refusal if unknown or disabled
+     */
     public Datasource requireEnabled(String name) {
         Datasource d = repository.findByName(name).orElseThrow(() -> new Refusal(
                 Refusal.Kind.UNKNOWN_DATASOURCE,
@@ -128,6 +159,12 @@ public class DatasourceService {
         }
     }
 
+    /**
+     * Creates a new Datasource after verifying name uniqueness.
+     *
+     * @param d Datasource configuration to persist
+     * @return persisted Datasource entity with generated ID
+     */
     public Datasource create(Datasource d) {
         repository.findByName(d.name()).ifPresent(existing -> {
             throw new IllegalArgumentException("A datasource named '" + d.name() + "' already exists");
@@ -135,6 +172,13 @@ public class DatasourceService {
         return repository.insert(d);
     }
 
+    /**
+     * Updates an existing Datasource, preserving password if blank and evicting existing connection pools.
+     *
+     * @param id       primary key of the Datasource to update
+     * @param incoming updated Datasource values
+     * @return updated Datasource entity
+     */
     public Datasource update(long id, Datasource incoming) {
         Datasource existing = repository.findById(id).orElseThrow(
                 () -> new java.util.NoSuchElementException("No datasource with id " + id));
@@ -149,6 +193,11 @@ public class DatasourceService {
         return merged.withId(id);
     }
 
+    /**
+     * Deletes a Datasource and evicts its associated connection pool.
+     *
+     * @param id primary key of the Datasource to delete
+     */
     public void delete(long id) {
         repository.findById(id).ifPresent(d -> {
             repository.delete(id);
@@ -156,18 +205,39 @@ public class DatasourceService {
         });
     }
 
+    /**
+     * Probes connectivity for a Datasource configuration using a single throwaway connection.
+     *
+     * @param d Datasource to test
+     * @throws Exception if connection fails
+     */
     public void probe(Datasource d) throws Exception {
         pools.probe(d);
     }
 
+    /**
+     * Gathers live pool metrics across all active Datasource connection pools.
+     *
+     * @return list of live pool metrics
+     */
     public List<PoolStats> poolStats() {
         return pools.stats();
     }
 
+    /**
+     * Evicts the live connection pool for the given Datasource name.
+     *
+     * @param name datasource name
+     */
     private void invalidate(String name) {
         pools.evict(name);
     }
 
+    /**
+     * Formats a comma-separated list of enabled Datasource names for error diagnostics.
+     *
+     * @return comma-separated list of enabled Datasource names
+     */
     private String names() {
         List<Datasource> all = findEnabled();
         return all.isEmpty() ? "(none configured)"
@@ -176,6 +246,9 @@ public class DatasourceService {
 
     /** A borrowed Connection that returns to the Pool upon close. */
     public record Lease(Connection connection) implements AutoCloseable {
+        /**
+         * Closes the borrowed connection, returning it to the pool.
+         */
         @Override
         public void close() {
             try {

@@ -16,8 +16,10 @@ import org.junit.jupiter.params.provider.ValueSource;
  */
 class SqlClassifierTest {
 
+    /** Classifier instance under test. */
     private final SqlClassifier classifier = new SqlClassifier();
 
+    /** Verifies correct Capability assignment across various SQL statement types. */
     @ParameterizedTest
     @CsvSource(delimiter = '|', textBlock = """
             SELECT 1                                              | SELECT
@@ -38,6 +40,7 @@ class SqlClassifierTest {
         assertThat(classifier.classify(sql).capability()).isEqualTo(expected);
     }
 
+    /** Verifies that leading SQL comments do not obscure the statement verb. */
     @Test
     void commentPreambleDoesNotHideTheVerb() {
         assertThat(classifier.classify("-- just looking\nSELECT a FROM t").capability())
@@ -46,6 +49,7 @@ class SqlClassifierTest {
                 .isEqualTo(Capability.DML);
     }
 
+    /** Verifies that data-modifying CTEs classify according to their inner write operations. */
     @Test
     void dataModifyingCteClassifiesAsItsWriteVerb() {
         // The case leading-keyword matching gets wrong: this reads as a SELECT and is not.
@@ -56,6 +60,7 @@ class SqlClassifierTest {
         assertThat(classification.modifyingCte()).isTrue();
     }
 
+    /** Verifies that CTE write operations combined with outer write operations classify as writes. */
     @Test
     void dataModifyingCteFeedingAnInsertIsStillAWrite() {
         assertThat(classifier.classify(
@@ -64,6 +69,7 @@ class SqlClassifierTest {
                 .isEqualTo(Capability.DML);
     }
 
+    /** Verifies that statement verbs are reported as readable SQL keywords rather than internal AST class names. */
     @Test
     void verbIsSqlsWordNotTheParsersClassName() {
         // An agent told its statement is a "PLAINSELECT" learns nothing.
@@ -74,12 +80,14 @@ class SqlClassifierTest {
                 .isEqualTo("DELETE");
     }
 
+    /** Verifies that standard read-only CTEs are not flagged as modifying CTEs. */
     @Test
     void readOnlyCteIsNotFlaggedAsModifying() {
         assertThat(classifier.classify("WITH r AS (SELECT * FROM orders) SELECT * FROM r").modifyingCte())
                 .isFalse();
     }
 
+    /** Verifies that multi-statement SQL strings are refused by single statement classification. */
     @Test
     void multipleStatementsAreRefused() {
         assertThatThrownBy(() -> classifier.classify("SELECT 1; DROP TABLE users"))
@@ -88,11 +96,13 @@ class SqlClassifierTest {
                 .isEqualTo(Refusal.Kind.MULTIPLE_STATEMENTS);
     }
 
+    /** Verifies that semicolons within string literals do not trigger multiple-statement refusal. */
     @Test
     void semicolonInsideALiteralIsOneStatement() {
         assertThat(classifier.classify("SELECT ';' FROM t").capability()).isEqualTo(Capability.SELECT);
     }
 
+    /** Verifies that syntax errors fail closed as UNPARSEABLE refusals. */
     @Test
     void unparseableSqlIsRefusedRatherThanPassedThrough() {
         assertThatThrownBy(() -> classifier.classify("SELCT * FROM"))
@@ -101,12 +111,14 @@ class SqlClassifierTest {
                 .isEqualTo(Refusal.Kind.UNPARSEABLE);
     }
 
+    /** Verifies that empty or whitespace-only queries are refused. */
     @ParameterizedTest
     @ValueSource(strings = {"", "   ", "-- nothing but a comment\n"})
     void emptyPayloadsAreRefused(String sql) {
         assertThatThrownBy(() -> classifier.classify(sql)).isInstanceOf(Refusal.class);
     }
 
+    /** Verifies distinct Refusal kinds between parse errors and multi-statement payloads. */
     @Test
     void refusalKindsAreDistinguishable() {
         // ADR-0004: an agent told only "refused" retries a Capability problem by rewriting syntax.
@@ -117,6 +129,7 @@ class SqlClassifierTest {
         assertThat(batch.toAgentMessage()).startsWith("multiple_statements:");
     }
 
+    /** Verifies extraction of all table names referenced in JOIN queries for allowlist verification. */
     @Test
     void namesTablesForAllowlistChecking() {
         var classification = classifier.classify("SELECT * FROM sales.orders o JOIN sales.lines l ON l.id = o.id");
@@ -126,6 +139,7 @@ class SqlClassifierTest {
                 .containsExactlyInAnyOrder("sales.orders", "sales.lines");
     }
 
+    /** Verifies that unqualified table references have a null schema component. */
     @Test
     void unqualifiedTableHasNoSchema() {
         var name = classifier.classify("SELECT * FROM orders").tables().get(0);
@@ -134,6 +148,7 @@ class SqlClassifierTest {
         assertThat(name.table()).isEqualTo("orders");
     }
 
+    /** Verifies extraction of target tables modified inside CTE bodies. */
     @Test
     void namesTablesWrittenToByADataModifyingCte() {
         // The allowlist check is only as good as this: miss the CTE's target and a scoped
@@ -144,6 +159,7 @@ class SqlClassifierTest {
                 .contains("staging");
     }
 
+    /** Verifies that CTE temporary aliases are excluded from extracted table lists. */
     @Test
     void cteAliasesAreNotReportedAsTables() {
         // 'd' is a name local to the query; allowlisting it would be meaningless and refusing over
@@ -153,6 +169,7 @@ class SqlClassifierTest {
                 .containsExactly("orders");
     }
 
+    /** Verifies that tablesResolved is true when all table references are fully identified. */
     @Test
     void tablesAreMarkedResolvedWhenTheyAreKnown() {
         assertThat(classifier.classify("SELECT * FROM orders").tablesResolved()).isTrue();
@@ -160,6 +177,7 @@ class SqlClassifierTest {
                 .tablesResolved()).isTrue();
     }
 
+    /** Verifies script classification for atomic multi-statement DML payloads. */
     @Test
     void classifiesMultiStatementScripts() {
         String script = """
@@ -177,6 +195,7 @@ class SqlClassifierTest {
         assertThat(sc.allTablesResolved()).isTrue();
     }
 
+    /** Verifies script classification for scripts requiring multiple distinct capabilities. */
     @Test
     void classifiesMultiStatementScriptsWithMixedCapabilities() {
         String script = """
@@ -191,6 +210,7 @@ class SqlClassifierTest {
                 .containsExactlyInAnyOrder(Capability.DDL_CREATE, Capability.DML, Capability.DDL_DROP);
     }
 
+    /** Verifies query classification for EXPLAIN statements. */
     @Test
     void classifiesExplainQueries() {
         Classification c1 = classifier.classifyExplain("SELECT * FROM orders WHERE id = 1");
@@ -202,6 +222,7 @@ class SqlClassifierTest {
         assertThat(c2.capability()).isEqualTo(Capability.SELECT);
     }
 
+    /** Verifies that EXPLAIN refuses write statements. */
     @Test
     void explainQueryRefusesWrites() {
         assertThatThrownBy(() -> classifier.classifyExplain("INSERT INTO orders VALUES (1)"))
@@ -210,6 +231,7 @@ class SqlClassifierTest {
                 .isEqualTo(Refusal.Kind.CAPABILITY);
     }
 
+    /** Verifies that EXPLAIN refuses data-modifying CTEs. */
     @Test
     void explainQueryRefusesModifyingCte() {
         assertThatThrownBy(() -> classifier.classifyExplain("WITH d AS (DELETE FROM staging RETURNING *) SELECT * FROM d"))
@@ -218,6 +240,7 @@ class SqlClassifierTest {
                 .isEqualTo(Refusal.Kind.CAPABILITY);
     }
 
+    /** Captures and returns the Refusal thrown by classifier execution. */
     private Refusal catchRefusal(String sql) {
         try {
             classifier.classify(sql);

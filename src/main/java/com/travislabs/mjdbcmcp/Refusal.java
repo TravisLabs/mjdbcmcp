@@ -35,18 +35,34 @@ public class Refusal extends RuntimeException {
         BAD_ARGUMENT
     }
 
+    /** The refusal category. */
     private final Kind kind;
 
+    /**
+     * Constructs a new Refusal with the given kind and detail message.
+     *
+     * @param kind    the refusal category
+     * @param message the detail message describing why the request was refused
+     */
     public Refusal(Kind kind, String message) {
         super(message);
         this.kind = kind;
     }
 
+    /**
+     * Returns the refusal kind.
+     *
+     * @return the refusal category
+     */
     public Kind kind() {
         return kind;
     }
 
-    /** The text sent back to the agent, prefixed so the category survives being read as prose. */
+    /**
+     * Formats the text sent back to the agent, prefixed so the category survives being read as prose.
+     *
+     * @return the formatted refusal string for the agent
+     */
     public String toAgentMessage() {
         return kind.name().toLowerCase(java.util.Locale.ROOT) + ": " + getMessage();
     }

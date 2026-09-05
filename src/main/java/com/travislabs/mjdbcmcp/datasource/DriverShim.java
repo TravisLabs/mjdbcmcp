@@ -15,12 +15,23 @@ import java.util.logging.Logger;
  */
 final class DriverShim implements Driver {
 
+    /** The underlying delegate JDBC driver. */
     private final Driver delegate;
 
+    /**
+     * Constructs a DriverShim delegating to the specified driver.
+     *
+     * @param delegate the actual driver instance
+     */
     DriverShim(Driver delegate) {
         this.delegate = delegate;
     }
 
+    /**
+     * Returns the fully qualified class name of the underlying delegate driver.
+     *
+     * @return delegate driver class name
+     */
     String delegateClassName() {
         return delegate.getClass().getName();
     }

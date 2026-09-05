@@ -17,17 +17,29 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class QueryLogRepository {
 
+    /** Comma-separated list of column names for the query_log table. */
     private static final String COLUMNS = """
             id, datasource, tool, sql_text, started_at, started_epoch_ms, duration_ms, outcome,
             refusal_kind, error, row_count, row_cap_reached, update_count
             """;
 
+    /** Spring JDBC client for database operations. */
     private final JdbcClient jdbc;
 
+    /**
+     * Constructs a QueryLogRepository with the given JDBC client.
+     *
+     * @param jdbc Spring JDBC client
+     */
     public QueryLogRepository(JdbcClient jdbc) {
         this.jdbc = jdbc;
     }
 
+    /**
+     * Inserts a batch of query execution records into the log.
+     *
+     * @param batch list of executions to insert
+     */
     public void insert(List<QueryExecution> batch) {
         for (QueryExecution e : batch) {
             jdbc.sql("""
@@ -61,6 +73,13 @@ public class QueryLogRepository {
         return removed;
     }
 
+    /**
+     * Aggregates execution summary counters and averages over a filtered slice.
+     *
+     * @param whereClause WHERE SQL clause filter
+     * @param params      parameters for the WHERE clause
+     * @return base execution summary without percentiles
+     */
     public QueryStats.Summary summary(String whereClause, List<Object> params) {
         QueryStats.Summary base = jdbc.sql("""
                 SELECT COUNT(*) AS calls,
@@ -110,6 +129,13 @@ public class QueryLogRepository {
                 .orElse(null);
     }
 
+    /**
+     * Queries distinct non-null values for a column recorded since a given timestamp.
+     *
+     * @param column column name
+     * @param since  start timestamp
+     * @return list of distinct string values
+     */
     public List<String> distinct(String column, Instant since) {
         return jdbc.sql("SELECT DISTINCT " + column + " AS v FROM query_log "
                 + "WHERE started_epoch_ms >= ? AND " + column + " IS NOT NULL ORDER BY v")
@@ -118,6 +144,12 @@ public class QueryLogRepository {
                 .list();
     }
 
+    /**
+     * Aggregates refusal counts grouped by refusal kind since a given timestamp.
+     *
+     * @param since start timestamp
+     * @return list of refusal counts per kind
+     */
     public List<QueryStats.RefusalCount> refusalCounts(Instant since) {
         return jdbc.sql("""
                 SELECT refusal_kind AS kind, COUNT(*) AS n FROM query_log
@@ -129,6 +161,13 @@ public class QueryLogRepository {
                 .list();
     }
 
+    /**
+     * Retrieves the slowest query executions since a given timestamp.
+     *
+     * @param since start timestamp
+     * @param limit maximum number of records to return
+     * @return list of slowest query executions
+     */
     public List<QueryExecution> slowest(Instant since, int limit) {
         return jdbc.sql("SELECT " + COLUMNS + " FROM query_log WHERE started_epoch_ms >= ? "
                 + "ORDER BY duration_ms DESC LIMIT ?")
@@ -137,14 +176,39 @@ public class QueryLogRepository {
                 .list();
     }
 
+    /**
+     * Retrieves recent query executions since a given timestamp.
+     *
+     * @param since start timestamp
+     * @param limit maximum number of records to return
+     * @return list of recent query executions
+     */
     public List<QueryExecution> recent(Instant since, int limit) {
+        return recent(since, limit, 0);
+    }
+
+    /**
+     * Retrieves paginated recent query executions since a given timestamp.
+     *
+     * @param since  start timestamp
+     * @param limit  maximum number of records to return
+     * @param offset starting record offset
+     * @return list of recent query executions
+     */
+    public List<QueryExecution> recent(Instant since, int limit, int offset) {
         return jdbc.sql("SELECT " + COLUMNS + " FROM query_log WHERE started_epoch_ms >= ? "
-                + "ORDER BY started_epoch_ms DESC LIMIT ?")
-                .params(List.of(since.toEpochMilli(), limit))
+                + "ORDER BY started_epoch_ms DESC LIMIT ? OFFSET ?")
+                .params(List.of(since.toEpochMilli(), limit, offset))
                 .query(this::map)
                 .list();
     }
 
+    /**
+     * Returns the timestamp of the oldest record within or after the specified timestamp.
+     *
+     * @param since cutoff timestamp
+     * @return optional containing the earliest record timestamp if any
+     */
     public Optional<Instant> earliest(Instant since) {
         return jdbc.sql("SELECT MIN(started_epoch_ms) FROM query_log WHERE started_epoch_ms >= ?")
                 .param(since.toEpochMilli())
@@ -153,6 +217,11 @@ public class QueryLogRepository {
                 .map(Instant::ofEpochMilli);
     }
 
+    /**
+     * Counts the total number of records currently in the query log.
+     *
+     * @return total record count
+     */
     public long count() {
         return jdbc.sql("SELECT COUNT(*) FROM query_log").query(Long.class).single();
     }

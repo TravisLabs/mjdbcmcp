@@ -25,14 +25,26 @@ public class ToolSurface {
 
     private static final Logger log = LoggerFactory.getLogger(ToolSurface.class);
 
+    /** Database tools provider for constructing tool specifications. */
     private final DatabaseTools tools;
+    /** Datasource service for querying enabled datasources and capabilities. */
     private final DatasourceService datasources;
+    /** Application configuration properties. */
     private final AppProperties props;
-    /** Lazy: the server is built from this component's initial surface, so it cannot be injected. */
+    /** Lazy provider for the active MCP server instance. */
     private final ObjectProvider<McpSyncServer> server;
 
+    /** Currently registered tool names on the live MCP server. */
     private Set<String> current = Set.of();
 
+    /**
+     * Constructs the ToolSurface with required dependencies.
+     *
+     * @param tools       database tools factory
+     * @param datasources datasource service
+     * @param props       application properties
+     * @param server      lazy provider for the running MCP server
+     */
     public ToolSurface(DatabaseTools tools, DatasourceService datasources, AppProperties props,
                        ObjectProvider<McpSyncServer> server) {
         this.tools = tools;

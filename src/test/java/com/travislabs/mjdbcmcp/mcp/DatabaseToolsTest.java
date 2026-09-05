@@ -39,16 +39,26 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import tools.jackson.databind.json.JsonMapper;
 
+/**
+ * Unit tests for {@link DatabaseTools} verifying MCP tool registration, execution, error handling,
+ * and refusal responses.
+ */
 class DatabaseToolsTest {
 
+    /** Temporary directory for SQLite application and target databases. */
     @TempDir
     Path tempDir;
 
+    /** Connection pool for application metadata and query log database. */
     private HikariDataSource appDataSource;
+    /** Connection pool for target database. */
     private HikariDataSource targetDataSource;
+    /** Datasource service managing configurations. */
     private DatasourceService datasourceService;
+    /** DatabaseTools under test. */
     private DatabaseTools tools;
 
+    /** Sets up application and target SQLite database schemas and service instances. */
     @BeforeEach
     void setUp() throws Exception {
         // App database for metadata and logs
@@ -98,12 +108,14 @@ class DatabaseToolsTest {
         datasourceService.create(d);
     }
 
+    /** Closes application and target database pools after each test. */
     @AfterEach
     void tearDown() {
         appDataSource.close();
         targetDataSource.close();
     }
 
+    /** Verifies that attempting to invoke an explicitly disabled tool returns a DISABLED_TOOL refusal. */
     @Test
     void disabledToolIsRefused() {
         var spec = tools.databaseInfo();
@@ -115,6 +127,7 @@ class DatabaseToolsTest {
         assertThat(text).startsWith("disabled_tool: Tool 'database_info' is disabled on datasource 'demo'.");
     }
 
+    /** Verifies successful execution of read-only SELECT queries via raw_query. */
     @Test
     void rawQueryExecutesRead() {
         var spec = tools.rawQuery();
@@ -126,6 +139,7 @@ class DatabaseToolsTest {
         assertThat(text).contains("\"rowCount\":2").contains("Book").contains("Pen");
     }
 
+    /** Verifies query execution plan generation via explain_query. */
     @Test
     void explainQueryGeneratesPlan() {
         var spec = tools.explainQuery();
@@ -137,6 +151,7 @@ class DatabaseToolsTest {
         assertThat(text).contains("explainQuery").contains("EXPLAIN QUERY PLAN");
     }
 
+    /** Verifies atomic execution of multi-statement modification scripts via raw_execute. */
     @Test
     void rawExecuteRunsScript() {
         var spec = tools.rawExecute();
@@ -152,6 +167,7 @@ class DatabaseToolsTest {
         assertThat(text).contains("\"committed\":true").contains("\"totalUpdateCount\":2");
     }
 
+    /** Loads and strips comments from the SQLite schema definition script. */
     private String schema() throws IOException {
         String raw = Files.readString(Path.of("src/main/resources/db/schema.sql"));
         return raw.lines()

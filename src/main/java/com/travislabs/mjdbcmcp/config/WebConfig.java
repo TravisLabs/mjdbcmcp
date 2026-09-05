@@ -16,6 +16,12 @@ import org.springframework.web.servlet.resource.PathResourceResolver;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
+    /**
+     * Registers static resource handlers to serve the built React UI assets from {@code classpath:/static/}
+     * and fallback to {@code index.html} for client-side single-page application routing.
+     *
+     * @param registry Spring MVC resource handler registry
+     */
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/**")
