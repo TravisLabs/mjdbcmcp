@@ -240,3 +240,7 @@ src/main/java/com/travislabs/mjdbcmcp/
 frontend/      React + Vite admin interface
 docs/adr/      Architecture decision records
 ```
+
+## License
+
+Apache-2.0. See [LICENSE](./LICENSE) for full license text.
