@@ -66,6 +66,69 @@ function Sql({ sql }: { sql: string | null }) {
   )
 }
 
+/** Expandable Detail component for recent calls table. Shows single-line preview with click-to-expand full message. */
+function Detail({ query }: { query: QueryExecution }) {
+  const [expanded, setExpanded] = useState(false)
+  const errorText = query.error
+  if (errorText) {
+    const isLong = errorText.length > 55 || errorText.includes('\n')
+    if (!isLong) {
+      return <span className="small text-body-secondary text-break">{errorText}</span>
+    }
+    return (
+      <div>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setExpanded(!expanded)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              setExpanded(!expanded)
+            }
+          }}
+          className="d-inline-flex align-items-center gap-1 detail-expandable text-decoration-none"
+          title={expanded ? 'Click to collapse' : 'Click to expand full detail'}
+        >
+          <span className="text-body-secondary" style={{ fontSize: '0.65rem' }}>
+            {expanded ? '▼' : '▶'}
+          </span>
+          <span className="small text-break detail-preview">
+            {expanded ? (
+              <span className="text-body-secondary">Collapse</span>
+            ) : (
+              `${errorText.slice(0, 55)}…`
+            )}
+          </span>
+        </div>
+        {expanded && (
+          <div className="detail-text-block mt-1">
+            {errorText}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  if (query.rowCount !== null) {
+    return (
+      <span className="small text-body-secondary">
+        {query.rowCount} row(s){query.rowCapReached ? ', capped' : ''}
+      </span>
+    )
+  }
+
+  if (query.updateCount !== null) {
+    return (
+      <span className="small text-body-secondary">
+        {query.updateCount} updated
+      </span>
+    )
+  }
+
+  return <span className="text-body-secondary">—</span>
+}
+
 function StatTile({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <Card className="h-100">
@@ -462,13 +525,7 @@ export default function ActivityPage() {
                   <td><code>{q.tool}</code></td>
                   <td><Sql sql={q.sql} /></td>
                   <td className="text-nowrap">{duration(q.durationMs)}</td>
-                  <td className="small text-body-secondary">
-                    {q.error
-                      ? <span title={q.error}>{q.error.slice(0, 60)}{q.error.length > 60 ? '…' : ''}</span>
-                      : q.rowCount !== null
-                        ? `${q.rowCount} row(s)${q.rowCapReached ? ', capped' : ''}`
-                        : q.updateCount !== null ? `${q.updateCount} updated` : ''}
-                  </td>
+                  <td><Detail query={q} /></td>
                 </tr>
               ))}
             </tbody>
