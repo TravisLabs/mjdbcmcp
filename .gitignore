@@ -17,3 +17,6 @@ build/
 node_modules/
 frontend/dist/
 .node/
+
+# Swift
+.build/
