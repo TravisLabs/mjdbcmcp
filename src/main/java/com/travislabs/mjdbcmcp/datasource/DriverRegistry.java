@@ -72,12 +72,20 @@ public class DriverRegistry {
         }
         var loader = new URLClassLoader(jars.toArray(URL[]::new), getClass().getClassLoader());
         for (Driver driver : ServiceLoader.load(Driver.class, loader)) {
+            // ServiceLoader inspects the parent classloader as well; ignore built-in drivers.
+            if (driver.getClass().getClassLoader() != loader) {
+                continue;
+            }
+            String className = driver.getClass().getName();
+            if (externalDrivers.contains(className)) {
+                continue;
+            }
             try {
                 DriverManager.registerDriver(new DriverShim(driver));
-                externalDrivers.add(driver.getClass().getName());
-                log.info("Registered external JDBC driver {}", driver.getClass().getName());
+                externalDrivers.add(className);
+                log.info("Registered external JDBC driver {}", className);
             } catch (SQLException e) {
-                log.warn("Failed to register driver {}: {}", driver.getClass().getName(), e.getMessage());
+                log.warn("Failed to register driver {}: {}", className, e.getMessage());
             }
         }
     }
@@ -91,6 +99,7 @@ public class DriverRegistry {
     public List<String> registeredDrivers() {
         return DriverManager.drivers()
                 .map(d -> d instanceof DriverShim shim ? shim.delegateClassName() : d.getClass().getName())
+                .distinct()
                 .sorted()
                 .toList();
     }
