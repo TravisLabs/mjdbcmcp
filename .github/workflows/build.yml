@@ -94,3 +94,32 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  macos-app:
+    name: Build macOS Menu Bar App
+    needs: build
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download JAR Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: mjdbcmcp-jars
+          path: build/libs
+
+      - name: Build macOS App Bundle
+        run: ./wrappers/macos/scripts/build-app.sh
+
+      - name: Create ZIP Archive
+        run: |
+          cd wrappers/macos/build
+          zip -r MjdbcmcpMenu-macOS.zip MjdbcmcpMenu.app
+
+      - name: Upload macOS App Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mjdbcmcp-macos-app
+          path: wrappers/macos/build/MjdbcmcpMenu-macOS.zip
+
